@@ -1,8 +1,8 @@
 # 容器
 
-### ArrayList
+## ArrayList
 
-#### Arraylist 与 LinkedList 区别?
+### Arraylist 与 LinkedList 区别?
 
 - **1. 是否保证线程安全：** `ArrayList` 和 `LinkedList` 都是不同步的，也就是不保证线程安全；
 
@@ -25,7 +25,7 @@
 
   虽然新增和删除操作下，LinkedList由于需要访问到index所以时间复杂度退化到O(n)，但实际操作下来，访问到index的速度还是比 Arraylist 元素向后位/向前移一位的操作 要快的。
 
-#### Arraylist的扩容机制
+### Arraylist的扩容机制
 
 
 
@@ -33,9 +33,9 @@
 
 
 
-### HashMap
+## HashMap
 
-#### **HashMap 的数据结构**
+### **HashMap 的数据结构**
 
 HashMap的主干是一个Node数组。Node是HashMap的基本组成单元，每一个Node包含一个key-value键值对。
 
@@ -51,7 +51,7 @@ static class Node<K,V> implements Map.Entry<K,V> {
 
 ![111](Java容器及并发.assets/111.jpg)
 
-#### JDK1.8后对hash算法和寻址算法
+### JDK1.8后对hash算法和寻址算法
 
 **hash算法优化**
 
@@ -80,7 +80,7 @@ index = hash&(length-1) //key的hash值和数组长度-1的32位二进制数进�
 
 ==综合低16位与高16的影响，减少hash碰撞==
 
-#### 扩容机制（为什么扩容是2的n次幂）
+### 扩容机制（为什么扩容是2的n次幂）
 
 hashmap默认长度是16，负载因子是 0.75f，threshold =0.75*16=12，也就是说，插入 12 个键值对就会扩容。
 
@@ -95,7 +95,7 @@ hashmap默认长度是16，负载因子是 0.75f，threshold =0.75*16=12，也�
 
 ==扩容时，利用 2 的次幂数值的二进制特点，既省去重新计算 hash 的时间，又把之前冲突的节点散列到了其他位置==
 
-#### hashmap的get/put过程
+### hashmap的get/put过程
 
 此题可以组成如下连环炮来问
 
@@ -158,21 +158,7 @@ for循环会执行4次
 
 主要是因为31是一个奇质数，所以`31*i=32*i-i=(i<<5)-i`，这种位移与减法结合的计算相比一般的运算快很多。
 
-#### 为什么hashmap的在链表元素数量超过8时改为红黑树?
-
-此题可以组成如下连环炮来问
-
-- 知道jdk1.8中hashmap改了啥么?
-- 为什么在解决hash冲突的时候，不直接用红黑树?而选择先用链表，再转红黑树?
-- 我不用红黑树，用二叉查找树可以么?
-
-***知道jdk1.8中hashmap改了啥么?***
-
-- 由**数组+链表**的结构改为**数组+链表+红黑树**。
-- 优化了高位运算的hash算法：h^(h>>>16)
-- 扩容后，元素要么是在原位置，要么是在原位置再移动2次幂的位置，且链表顺序不变。
-
-最后一条是重点，因为最后一条的变动，hashmap在1.8中，不会在出现死循环问题。
+### 红黑树
 
 ***为什么在解决hash冲突的时候，不直接用红黑树?而选择先用链表，再转红黑树?***
 
@@ -184,13 +170,13 @@ for循环会执行4次
 
 可以。但是二叉查找树在特殊情况下会变成一条线性结构（这就跟原来使用链表结构一样了，造成很深的问题），遍历查找会非常慢。
 
-#### HashMap 和 Hashtable 的区别
+### HashMap 和 Hashtable 的区别
 
 1. **线程是否安全：** HashMap 是非线程安全的，HashTable 是线程安全的；HashTable 内部的方法基本都经过`synchronized` 修饰。（如果你要保证线程安全的话就使用 ConcurrentHashMap 吧！）；
 
 2. **效率：** 因为线程安全的问题，HashMap 要比 HashTable 效率高一点。另外，HashTable 基本被淘汰，不要在代码中使用它；
 
-3. **对Null key 和Null value的支持：** HashMap 中，null 可以作为键，这样的键只有一个，可以有一个或多个键所对应的值为 null。。但是在 HashTable 中 put 进的键值只要有一个 null，直接抛出 NullPointerException。
+3. **对Null key 和Null value的支持：** HashMap 中，null 可以作为键，这样的键只有一个，可以有一个或多个键所对应的值为 null。但是在 HashTable 中 put 进的键值只要有一个 null，直接抛出 NullPointerException。
 
 4. **初始容量大小和每次扩充容量大小的不同 ：** 
 
@@ -200,13 +186,13 @@ for循环会执行4次
 
 5. **底层数据结构：** JDK1.8 以后的 HashMap 在解决哈希冲突时有了较大的变化，当链表长度大于阈值（默认为8）（将链表转换成红黑树前会判断，如果当前数组的长度小于 64，那么会选择先进行数组扩容，而不是转换为红黑树）时，将链表转化为红黑树，以减少搜索时间。Hashtable 没有这样的机制。
 
-#### HashMap 多线程操作导致死循环问题
+### HashMap 多线程操作导致死循环问题
 
-### HashSet
+## HashSet
 
 底层由HashMap来实现，HashSet使用成员对象来计算hashcode值，对于两个对象来说hashcode可能相同，所以equals()方法用来判断对象的相等性。
 
-### ConcurrentHashMap 
+## ConcurrentHashMap 
 
 JDK1.8以前： 采用分段锁 。put和 get **两次Hash**到达指定的HashEntry，第一次hash到达Segment,第二次到达Segment里面的Entry,然后在遍历entry链表。
 
@@ -216,7 +202,7 @@ JDK1.8以后：并发控制使用Synchronized和CAS来操作。put如果没有ha
 
 
 
-#### ConcurrentHashMap 和 Hashtable 的区别
+### ConcurrentHashMap 和 Hashtable 的区别
 
 ConcurrentHashMap 和 Hashtable 的区别主要体现在实现线程安全的方式上不同。
 
@@ -279,25 +265,23 @@ yield(): 让出cpu给其他线程, 并处于就绪状态。
 
  Java内存模型是围绕着并发编程中**原子性**、**可见性**、**有序性**这三个特征来建立的
 
-### 内存交互
+### ~~内存交互~~
 
-- lock   （锁定）：作用于主内存的变量，把一个变量标识为线程独占状态
+- ~~lock   （锁定）：作用于主内存的变量，把一个变量标识为线程独占状态~~
 
-- unlock （解锁）：作用于主内存的变量，它把一个处于锁定状态的变量释放出来，释放后的变量才可以被其他线程锁定
+- ~~unlock （解锁）：作用于主内存的变量，它把一个处于锁定状态的变量释放出来，释放后的变量才可以被其他线程锁定~~
 
-- read  （读取）：作用于主内存变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的load动作使用
+- ~~read  （读取）：作用于主内存变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的load动作使用~~
 
-- load   （载入）：作用于工作内存的变量，它把read操作从主存中变量放入工作内存中
+- ~~load   （载入）：作用于工作内存的变量，它把read操作从主存中变量放入工作内存中~~
 
-- use   （使用）：作用于工作内存中的变量，它把工作内存中的变量传输给执行引擎，每当虚拟机遇到一个需要使用到变量的值，就会使用到这个指令
+- ~~use   （使用）：作用于工作内存中的变量，它把工作内存中的变量传输给执行引擎，每当虚拟机遇到一个需要使用到变量的值，就会使用到这个指令~~
 
-- assign （赋值）：作用于工作内存中的变量，它把一个从执行引擎中接受到的值放入工作内存的变量副本中
+- ~~assign （赋值）：作用于工作内存中的变量，它把一个从执行引擎中接受到的值放入工作内存的变量副本中~~
 
-- store  （存储）：作用于主内存中的变量，它把一个从工作内存中一个变量的值传送到主内存中，以便后续的write使用
+- ~~store  （存储）：作用于主内存中的变量，它把一个从工作内存中一个变量的值传送到主内存中，以便后续的write使用~~
 
-- write 　（写入）：作用于主内存中的变量，它把store操作从工作内存中得到的变量的值放入主内存的变量中
-
-  
+- ~~write 　（写入）：作用于主内存中的变量，它把store操作从工作内存中得到的变量的值放入主内存的变量中~~
 
 ### 内存模型三大特性
 
@@ -333,17 +317,27 @@ happen-before的传递性原则：如果A操作 happen-before B操作，B操作h
 
 ## volatile
 
+### 特性及原理
+
 被volatile修饰的共享变量，就会具有以下两个特性：
 
 1. 保证了不同线程对该变量操作的内存可见性。
 
-   volatile关键字解决可见性问题，通俗来说就是线程A对变量的修改，会直接刷新到主内存，线程B当中，在对变量进行读取的时候，发现变量是volatile关键字修饰的变量，直接放弃从工作内存当中读取，而是从主内存中读取
+   volatile关键字解决可见性问题，通俗来说就是线程A对变量的修改，会直接刷新到主内存，同时将其他线程的工作内存中data变量缓存失效过期。线程B当中，在对变量进行读取的时候，发现变量已过期，将从主内存中读取。
 
 2. 禁止指令重排序。
 
    volatile的happen-before原则：对一个volatile变量的写操作happen-before对此变量的任意操作(当然也包括写操作了)。
 
-#### volatile和synchronized的区别
+### 原理
+
+**可见性**
+
+1. 一旦data变量定义的时候前面加了volatile来修饰的话，那么线程1只要修改data变量的值，就会在修改完自己本地工作内存的data变量值之后，强制将这个data变量最新的值刷回主内存
+2. 如果此时别的线程的工作内存中有这个data变量的本地缓存，也就是一个变量副本的话，那么会强制让其他线程的工作内存中的data变量缓存直接失效过期，不允许再次读取和使用了！
+3. 如果线程2在代码运行过程中再次需要读取data变量的值，此时尝试从本地工作内存中读取，就会发现这个data = 0已经过期了！此时，他就必须重新从主内存中加载data变量最新的值！
+
+### volatile和synchronized的区别
 
 - **volatile关键字**是线程同步的**轻量级实现**，所以**volatile性能肯定比synchronized关键字要好**。但是**volatile关键字只能用于变量而synchronized关键字可以修饰方法以及代码块**。synchronized关键字在JavaSE1.6之后进行了主要包括为了减少获得锁和释放锁带来的性能消耗而引入的偏向锁和轻量级锁以及其它各种优化之后执行效率有了显著提升，**实际开发中使用 synchronized 关键字的场景还是更多一些**。
 - **多线程访问volatile关键字不会发生阻塞，而synchronized关键字可能会发生阻塞**
@@ -362,7 +356,7 @@ happen-before的传递性原则：如果A操作 happen-before B操作，B操作h
 
   **总结：** synchronized 关键字加到 static 静态方法和 synchronized(class)代码块上都是是给 Class 类上锁。synchronized 关键字加到实例方法上是给对象实例上锁。尽量不要使用 synchronized(String a) 因为JVM中，字符串常量池具有缓存功能！
 
-#### 线程安全的单例模式（双重检查锁方式）
+**线程安全的单例模式（双重检查锁方式）**
 
 ```java
 public class Singleton {
@@ -396,49 +390,52 @@ uniqueInstance 采用 volatile 关键字修饰也是很有必要的， uniqueIns
 2. 初始化 uniqueInstance
 3. 将 uniqueInstance 指向分配的内存地址
 
-但是由于 JVM 具有指令重排的特性，执行顺序有可能变成 1->3->2。指令重排在单线程环境下不会出现问题，但是在多线程环境下会导致一个线程获得还没有初始化的实例。例如，线程 T1 执行了 1 和 3，此时 T2 调用 getUniqueInstance() 后发现 uniqueInstance 不为空，因此返回 uniqueInstance，但此时 uniqueInstance 还未被初始化。
+但是由于 JVM 具有指令重排的特性，执行顺序有可能变成 1->3->2。指令重排在单线程环境下不会出现问题，但是在多线程环境下会导致一个线程获得还没有初始化的实例。例如，线程 T1 执行了 1 和 3，此时 T2 调用 getUniqueInstance() 后发现 uniqueInstance 不为空，因此返回 uniqueInstance，如果是这个流程，多线程环境下就可能将一个未初始化的对象引用暴露出来，从而导致不可预料的结果。
 
 使用 volatile 可以禁止 JVM 的指令重排，保证在多线程环境下也能正常运行。
 
-### synchronized 关键字的底层原理
+### 锁升级
+
+级别由低到高依次为：**无锁状态**、**偏向锁状态**、**轻量级锁状态**、**重量级锁状态**。
+
+==锁可以升级但不能降级。==
+
+synchronized用的锁存在Java对象头里，Java对象头里的Mark Word默认存储对象的HashCode、分代年龄和锁标记位。
+
+**偏向锁**：偏向锁是指当一段同步代码一直被同一个线程所访问时，即不存在多个线程的竞争时，那么该线程在后续访问时便会自动获得锁，从而降低获取锁带来的消耗，即提高性能。
+
+当一个线程访问同步块并获取锁时，会在 Mark Word 里存储锁偏向的threadID。当同一个线程再次获取锁时会比较当前的threadID与Mark Word 中的threadID是否一致。如果一致则不需要通过CAS来加锁、解锁。如果不一致并且线程还需要持续持有锁，则暂停当前线程撤销偏向锁，升级为轻量级锁。
+
+**轻量级锁**：轻量级锁由偏向锁升级而来，偏向锁运行在一个线程同步块时，第二个线程加入锁竞争的时候，偏向锁就会升级为轻量级锁。
+
+若当前只有一个等待线程，则该线程将通过自旋进行等待。但是当自旋超过一定的次数时，轻量级锁便会升级为重量级锁。
+
+**重量级锁**：重量级锁依赖于底层操作系统实现，操作系统实现线程之间的切换需要从用户态切换到内核态，切换成本非常高。但若一直使用轻量级锁，等待线程的不断自旋也会消耗CPU资源，使用重量级锁后等待线程相当于被阻塞在队列中，不耗费资源。当轻量级锁耗费资源高过重量级锁时(大量自旋）使用重量级锁。
+
+
+
+### 原理
 
 **synchronized 关键字底层原理属于 JVM 层面。**
 
 **① synchronized 同步语句块的情况**
 
-```java
-public class SynchronizedDemo {
-    public void method() {
-        synchronized (this) {
-            System.out.println("synchronized 代码块");
-        }
-    }
-}
-Copy to clipboardErrorCopied
-```
-
-通过 JDK 自带的 javap 命令查看 SynchronizedDemo 类的相关字节码信息：首先切换到类的对应目录执行 `javac SynchronizedDemo.java` 命令生成编译后的 .class 文件，然后执行`javap -c -s -v -l SynchronizedDemo.class`。
-
-![synchronized关键字原理](https://my-blog-to-use.oss-cn-beijing.aliyuncs.com/2019-6/synchronized%E5%85%B3%E9%94%AE%E5%AD%97%E5%8E%9F%E7%90%86.png)
-
-从上面我们可以看出：
-
-**synchronized 同步语句块的实现使用的是 monitorenter 和 monitorexit 指令，其中 monitorenter 指令指向同步代码块的开始位置，monitorexit 指令则指明同步代码块的结束位置。** 当执行 monitorenter 指令时，线程试图获取锁也就是获取 monitor(monitor对象存在于每个Java对象的对象头中，synchronized 锁便是通过这种方式获取锁的，也是为什么Java中任意对象可以作为锁的原因) 的持有权。当计数器为0则可以成功获取，获取后将锁计数器设为1也就是加1。相应的在执行 monitorexit 指令后，将锁计数器设为0，表明锁被释放。如果获取对象锁失败，那当前线程就要阻塞等待，直到锁被另外一个线程释放为止。
+**synchronized 同步语句块的实现使用的是 monitorenter 和 monitorexit 指令，其中 monitorenter 指令指向同步代码块的开始位置，monitorexit 指令则指明同步代码块的结束位置。** 当执行 monitorenter 指令时，线程试图获取锁也就是获取 monitor(**monitor对象存在于每个Java对象的对象头中**，synchronized 锁便是通过这种方式获取锁的，也是为什么Java中任意对象可以作为锁的原因) 的持有权。当计数器为0则可以成功获取，获取后将锁计数器设为1也就是加1。相应的在执行 monitorexit 指令后，将锁计数器设为0，表明锁被释放。如果获取对象锁失败，那当前线程就要阻塞等待，直到锁被另外一个线程释放为止。
 
 **② synchronized 修饰方法的的情况**
 
-```java
-public class SynchronizedDemo2 {
-    public synchronized void method() {
-        System.out.println("synchronized 方法");
-    }
-}
-Copy to clipboardErrorCopied
-```
-
-![synchronized关键字原理](https://my-blog-to-use.oss-cn-beijing.aliyuncs.com/2019-6/synchronized%E5%85%B3%E9%94%AE%E5%AD%97%E5%8E%9F%E7%90%862.png)
-
 synchronized 修饰的方法并没有 monitorenter 指令和 monitorexit 指令，取得代之的确实是 ACC_SYNCHRONIZED 标识，该标识指明了该方法是一个同步方法，JVM 通过该 ACC_SYNCHRONIZED 访问标志来辨别一个方法是否声明为同步方法，从而执行相应的同步调用。
+
+### synchronized和lock的区别
+
+| 类别     | synchronized                                                 | lock                                                         |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 存在层次 | java的关键字，在jvm层面上                                    | 是一个API/类/接口                                            |
+| 锁的释放 | 1、以获取锁的线程执行完同步代码，释放锁2、线程执行发生异常，jvm会让线程释放锁 | 在finally中必须释放锁，不然容易造成线程死锁                  |
+| 锁的获取 | 假设A线程获得锁，B线程等待，如果A线程阻塞，B线程会一直等待   | 分情况而定，lock有多个锁获取的方法，可以尝试获得锁(tryLock)，线程可以不用一直等待 |
+| 锁状态   | 无法判断                                                     | 可以判断                                                     |
+| 锁类型   | 可重入   不可中断   非公平                                   | 可重入 可中断(lockInterruptibly)   可公平                    |
+| 性能     | 少量同步                                                     | 大量同步                                                     |
 
 ## ThreadLocal
 
@@ -462,6 +459,55 @@ ThreadLocal主要用来存储当前线程上下文的变量信息，它可以保
 
 ### CAS原理
 
+CAS即compare and swap(比较与交换)，它涉及到三个操作数：内存值、预期值、新值。当且仅当预期值和内存值相等时才将内存值修改为新值，否则就什么都不做。整个比较并替换的操作是一个原子操作。
+
+
+
+**CAS实现自旋锁**
+
+```java
+ public class SpinLock {
+        private AtomicReference<Thread> owner = new AtomicReference<>();
+
+        public void lock() {
+            //获取当前线程对象
+            Thread current = Thread.currentThread();
+            //当owner持有线程不为空时，循环等待
+            while (!owner.compareAndSet(null, current)) {
+                //当owner持有线程为空时，将owner持有线程设为当前线程，退出循环
+            }
+        }
+
+        public void unlock() {
+            Thread current = Thread.currentThread();
+            //执行完成后，将owner持有线程重新置为空，相当于释放锁
+            owner.compareAndSet(current, null);
+        }
+    }
+//线程A先获取锁sleep一秒钟，这时候线程B尝试获取锁不断自旋 一秒钟后A释放锁 B获取锁后再释放 程序结束
+public class test {
+    public static void main(String[] args) {
+        SpinLock mySpinLock = new SpinLock();
+        
+        new Thread(()->{
+            mySpinLock.lock();
+            try { 
+                TimeUnit.SECONDS.sleep(1); 
+            } 
+            catch (InterruptedException e) {
+                e.printStackTrace(); 
+            }
+            mySpinLock.unLock();
+        },"A").start();
+
+        new Thread(()->{
+            mySpinLock.lock();
+            mySpinLock.unLock();
+        },"B").start();
+    }
+}
+```
+
 ### Atomic 原子类
 
 ## 锁与同步器
@@ -474,33 +520,37 @@ AQS是实现同步器的基础组件，并发包中各种锁也是由AQS所实�
 
 ### ReentrantLock和synchronized的区别
 
-**① 两者都是可重入锁**
-
-两者都是可重入锁。“可重入锁”概念是：自己可以再次获取自己的内部锁。比如一个线程获得了某个对象的锁，此时这个对象锁还没有释放，当其再次想要获取这个对象的锁的时候还是可以获取的，如果不可锁重入的话，就会造成死锁。同一个线程每次获取锁，锁的计数器都自增1，所以要等到锁的计数器下降为0时才能释放锁。
-
-**② synchronized 依赖于 JVM 而 ReentrantLock 依赖于 API**
-
-synchronized 是依赖于 JVM 实现的，前面我们也讲到了 虚拟机团队在 JDK1.6 为 synchronized 关键字进行了很多优化，但是这些优化都是在虚拟机层面实现的，并没有直接暴露给我们。ReentrantLock 是 JDK 层面实现的（也就是 API 层面，需要 lock() 和 unlock() 方法配合 try/finally 语句块来完成），所以我们可以通过查看它的源代码，来看它是如何实现的。
-
-**③ ReentrantLock 比 synchronized 增加了一些高级功能**
-
-相比synchronized，ReentrantLock增加了一些高级功能。主要来说主要有三点：**①等待可中断；②可实现公平锁；③可实现选择性通知（锁可以绑定多个条件）**
-
-- **ReentrantLock提供了一种能够中断等待锁的线程的机制**，通过lock.lockInterruptibly()来实现这个机制。也就是说正在等待的线程可以选择放弃等待，改为处理其他事情。
-- **ReentrantLock可以指定是公平锁还是非公平锁。而synchronized只能是非公平锁。所谓的公平锁就是先等待的线程先获得锁。** ReentrantLock默认情况是非公平的，可以通过 ReentrantLock类的`ReentrantLock(boolean fair)`构造方法来制定是否是公平的。
-- synchronized关键字与wait()和notify()/notifyAll()方法相结合可以实现等待/通知机制，ReentrantLock类当然也可以实现，但是需要借助于Condition接口与newCondition() 方法。Condition是JDK1.5之后才有的，它具有很好的灵活性，比如可以实现多路通知功能也就是在一个Lock对象中可以创建多个Condition实例（即对象监视器），**线程对象可以注册在指定的Condition中，从而可以有选择性的进行线程通知，在调度线程上更加灵活。 在使用notify()/notifyAll()方法进行通知时，被通知的线程是由 JVM 选择的，用ReentrantLock类结合Condition实例可以实现“选择性通知”** ，这个功能非常重要，而且是Condition接口默认提供的。而synchronized关键字就相当于整个Lock对象中只有一个Condition实例，所有的线程都注册在它一个身上。如果执行notifyAll()方法的话就会通知所有处于等待状态的线程这样会造成很大的效率问题，而Condition实例的signalAll()方法 只会唤醒注册在该Condition实例中的所有等待线程。
-
 ### ReentrantReadWriteLock 读写锁
 
 读写锁在ReentrantLock上进行了拓展使得该锁更适合读操作远远大于写操作对场景。
 
-AQS中维护了一个state状态，其高16位表示读状态，低16位表示写状态。
+AQS中维护了一个state状态，读锁用高16位，表示持有读锁的线程数（sharedCount），写锁低16位，表示写锁的重入次数 （exclusiveCount）
+
+![img](Java容器及并发.assets/1.png)
 
 #### 读写锁的实现
 
 ## 线程池
 
-#### 几种常见的线程池及使用场景
+### 优点
+
+1. 降低系统资源消耗，通过重用已存在的线程，降低线程创建和销毁造成的消耗；
+
+2. 提高系统响应速度，当有任务到达时，通过复用已存在的线程，无需等待新线程的创建便能立即执行；
+
+3. 方便线程并发数的管控。因为线程若是无限制的创建，可能会导致内存占用过多而产生OOM，并且会造成cpu过度切换。
+
+   
+
+### 工作流程
+
+![clip_image002](https://images2015.cnblogs.com/blog/834468/201602/834468-20160201155805225-1324751929.png)
+
+线程池的工作模型主要两部分组成，一部分是运行Runnable的Thread对象，另一部分就是阻塞队列。
+
+由线程池创建的Thread对象其内部的run方法会通过阻塞队列的take方法获取一个Runnable对象，然后执行这个Runnable对象的run方法（即，在Thread的run方法中调用Runnable对象的run方法）。当Runnable对象的run方法执行完毕以后，Thread中的run方法又循环的从阻塞队列中获取下一个Runnable对象继续执行。这样就实现了Thread对象的重复利用，也就减少了创建线程和销毁线程所消耗的资源。
+
+### 几种常见的线程池及使用场景
 
 1、newSingleThreadExecutor
 创建一个单线程化的线程池，它只会用唯一的工作线程来执行任务，保证所有任务按照指定顺序(FIFO, LIFO, 优先级)执行。
@@ -521,5 +571,18 @@ AQS中维护了一个state状态，其高16位表示读状态，低16位表示�
 2）newCachedThreadPool和newScheduledThreadPool:
   主要问题是线程数最大数是Integer.MAX_VALUE，可能会创建数量非常多的线程，甚至OOM。
 
-#### 线程池的常见参数
+### 线程池的常见参数
 
+（1）corePoolSize：线程池中常驻核心线程数
+
+（2）maximumPoolSize：线程池能够容纳同时执行的最大线程数，此值必须大于等于1
+
+（3）keepAliveTime：多余的空闲线程存活时间。若当前线程池中的线程数量比核心线程数量多，并且是闲置状态，则这些闲置的线程所能存活的最大时间。
+
+（4）TimeUnit：keepAliveTime的时间单位
+
+（5）workQueue：用于保存等待执行的任务的阻塞队列
+
+（6）threadFactory：表示生成线程池中的工作线程的线程工厂，用于创建线程，一般为默认线程工厂即可
+
+（7）handler：拒绝策略，表示当队列满了并且工作线程大于等于线程池的最大线程数（maximumPoolSize）时采取的策略，如抛弃异常、摸摸丢弃
