@@ -1,6 +1,321 @@
 # Java基础
 
+## 面向对象和面向过程的区别
 
+- **面向过程** ：**面向过程性能比面向对象高。** 因为类调用时需要实例化，开销比较大，比较消耗资源，所以当性能是最重要的考量因素的时候，比如单片机、嵌入式开发、Linux/Unix 等一般采用面向过程开发。但是，**面向过程没有面向对象易维护、易复用、易扩展。**
+- **面向对象** ：**面向对象易维护、易复用、易扩展。** 因为面向对象有封装、继承、多态性的特性，所以可以设计出低耦合的系统，使系统更加灵活、更加易于维护。但是，**面向对象性能比面向过程低**。
+
+## JVM、 JDK 和 JRE 
+
+JRE 是 Java 运行时环境。它是运行已编译 Java 程序所需的所有内容的集合，**包括 Java 虚拟机**（JVM），Java 类库，java 命令和其他的一些基础构件。但是，它**不能用于创建新程序**。
+
+JDK 是 Java Development Kit，它是功能齐全的 Java SDK。它拥有 JRE 所拥有的一切。**能够创建和编译程序**。
+
+## 重载和重写的区别
+
+> 重载就是同样的一个方法能够根据输入数据的不同，做出不同的处理
+>
+> 重写就是当子类继承自父类的相同方法，输入数据一样，但要做出有别于父类的响应时，你就要覆盖父类方法
+
+**重载**
+
+发生在同一个类中，方法名必须相同，参数类型不同、个数不同、顺序不同，方法返回值和访问修饰符可以不同。
+
+**重写**
+
+重写发生在运行期，是子类对父类的允许访问的方法的实现过程进行重新编写。
+
+1. 返回值类型、方法名、参数列表必须相同，抛出的异常范围小于等于父类，访问修饰符范围大于等于父类。
+2. 如果父类方法访问修饰符为 private/final/static 则子类就不能重写该方法，但是被 static 修饰的方法能够被再次声明。
+3. 构造方法无法被重写
+
+## 修饰符
+
+|                        | public（all） | protected（包、子类） | default（包） | private（自己） |
+| :--------------------: | :-----------: | :-------------------: | :-----------: | :-------------: |
+|   同一个类（我自己）   |       √       |           √           |       √       |        √        |
+|   同一个包（我邻居）   |       √       |           √           |       √       |        ×        |
+|  不同包子类（私生子）  |       √       |           √           |       ×       |        ×        |
+| 不同包非子类（陌生人） |       √       |           ×           |       ×       |        ×        |
+
+## **一个Java文件只能有一个public类**
+
+一个Java文件可以包含多个类，但只能有一个public类，且该public类名称必须与java文件名相同。public类不是必须的，java文件中可以没有public类。
+
+## Java 面向对象编程三大特性: 封装 继承 多态
+
+### 封装
+
+是指隐藏对象的属性和实现细节（用private修饰），仅对外提供公共访问方式。类中提供了方法（用public修饰），常用的是get、set方法，可以操作这些被隐藏的属性，其他类可以通过调用这些方法，改变隐藏属性的值！
+
+### 继承
+
+在定义和实现一个类的时候，可以在一个已经存在的类的基础之上来进行，使用extends关键字实现继承；
+
+### 多态
+
+多态就是在声明时使用父类，在实现或调用时使用具体的子类；即不修改程序代码就可以改变程序运行时所绑定的具体代码，让程序可以选择多个运行状态。
+
+## String、StringBuffer 和 StringBuilder 的区别是什么?
+
+**可变性**
+
+String 类中使用 final 关键字修饰字符数组来保存字符串，`private final char value[]`，所以 String 对象是不可变的。
+
+在 Java 9 之后，String 类的实现改用 byte 数组存储字符串 `private final byte[] value`;
+
+而 StringBuilder 与 StringBuffer 都继承自 AbstractStringBuilder 类，在 AbstractStringBuilder 中也是使用字符数组保存字符串`char[]value` 但是没有用 final 关键字修饰，所以这两种对象都是可变的。
+
+**线程安全性**
+
+String 中的对象是不可变的，也就可以理解为常量，线程安全。
+
+StringBuffer 对方法加了同步锁或者对调用的方法加了同步锁，所以是线程安全的。
+
+StringBuilder 并没有对方法进行加同步锁，所以是非线程安全的。
+
+**性能**
+
+StringBuffer >StringBuilder >String 
+
+## 自动装箱与自动拆箱
+
+装箱就是自动将基本数据类型转换为包装器类型；拆箱就是自动将包装器类型转换为基本数据类型。
+
+```java
+Integer i = 10; //装箱
+int n = i; //拆箱 
+```
+
+在装箱的时候自动调用的是Integer的valueOf(int)方法。而在拆箱的时候自动调用的是Integer的intValue()方法
+
+**面试点(valueOf)**
+
+```java
+public class Main {
+   public static void main(String[] args) {
+    
+    Integer i1 = 100;
+    Integer i2 = 100;
+    Integer i3 = 200;
+    Integer i4 = 200;
+    
+    System.out.println(i1==i2);
+    System.out.println(i3==i4);
+  }
+}
+//打印：
+//true
+//false
+```
+
+在通过valueOf方法创建Integer对象的时候，如果数值在[-128,127]之间，便返回指向IntegerCache.cache中已经存在的对象的引用；否则创建一个新的Integer对象。
+
+上面的代码中i1和i2的数值为100，因此会直接从cache中取已经存在的对象，所以i1和i2指向的是同一个对象，而i3和i4则是分别指向不同的对象。
+
+```java
+public class Main {
+   public static void main(String[] args) {
+    
+    Double  i1 = 100.0;
+    Double  i2 = 100.0;
+    Double  i3 = 200.0;
+    Double  i4 = 200.0;
+    
+    System.out.println(i1==i2);
+    System.out.println(i3==i4);
+  }
+}
+//打印：
+//false
+//false
+```
+
+浮点数的valueOf()不支持上述实现，直接创建一个新的Double对象，因为在某个范围内的整型数值的个数是有限的，而浮点数却不是。
+
+==Integer、Short、Byte、Character、Long这几个类的valueOf方法的实现是类似的。Double、Float 浮点数则不同==
+
+```java
+public class Main {
+   public static void main(String[] args) {
+    
+    Boolean   i1 = false;
+    Boolean   i2 = false;
+    Boolean   i3 = true;
+    Boolean   i4 = true;
+    
+    System.out.println(i1==i2);
+    System.out.println(i3==i4);
+  }
+}
+//打印：
+//true
+//true
+public static final Boolean TRUE = new Boolean(true);
+public static final Boolean FALSE = new Boolean(false);
+
+public static Boolean valueOf(boolean b) {
+        return (b ? TRUE : FALSE); 
+}
+```
+
+Boolean的valueOf()返回类变量TRUE 或 FALSE，i1 i2指向的地址都一样
+
+## 成员变量与局部变量区别
+
+**声明位置**
+
+**修饰符**
+
+局部变量：只能由final修饰
+
+成员变量：public,private,protected,static,final
+
+**存储位置**
+
+- 局部变量：栈
+- 实例变量：堆
+- 类变量：方法区
+
+**生命周期**
+
+- 局部变量：每一个线程，每一次调用执行都是新的生命周期
+- 实例变量：随着对象的创建而初始化，随着对象的被回收而消亡，每一个对象的实例变量是独立的
+- 类变量：随着类的初始化而初始化，随着类的卸载二消亡，该类的所有对象的类变量是共享的
+
+**初始化值**
+
+## 关键名词
+
+### 重写
+
+**继承与重写**
+
+父类中私有方法不能被重写（方法用private修饰，隐式的默认为final 不能被重写）
+
+子类重写父类方法时，访问权限不能更低。
+
+**多态与重写**
+
+## 关键字
+
+### Static
+
+static修饰的变量、方法、代码块都在方法区，随类加载时只加载一次。
+
+静态static方法中不能调用非静态non-static方法，准确地说是不能直接调用non-static方法。但是可以通过将一个对象的引用传入static方法中，再去调用该对象的non-static方法。因为在类加载时，被static修饰方法会被首先载入，此时non-static方法还未载入，直接调用时报错。
+
+可以在没有创建任何对象的前提下，仅仅通过类本身来调用static方法
+
+### final
+
+1. final类，表明这个类不能被继承。final类中的所有成员方法隐式的指定为final方法，成员变量不受影响
+2. final方法，表明这个方法不能被重写（类中private方法会隐式的指定为final方法，不能被重写）
+3. final变量，若是基本数据类型，一旦初始化不能更改；若是引用变量，初始化后不可指向其他对象，但对象内容可变。
+4. final变量，局部变量声明即赋值，成员变量可在声明和构造方法中赋值。
+
+### this与super
+
+|                                            | this                                       | super                                       |
+| ------------------------------------------ | ------------------------------------------ | ------------------------------------------- |
+| 直接使用                                   | 指向当前对象本身，可用this.xxx引用本类成员 | 指向当前对象父类，可用super.xxx引用父类成员 |
+| 在构造方法内使用（需放在构造方法内第一行） | this（参数）调用本类具有相同形参的构造方法 | super（参数）调用父类具有相同形参的构造方法 |
+
+
+
+## 接口与抽象类
+
+**抽象类**
+
+1. abstract修饰类为抽象类，无法实例化
+2. abstract修饰方法为抽象方法，方法不能有方法体
+3. 有抽象方法的类一定是抽象类，但抽象类不一定有抽象方法
+4. 若要实例化抽象类子类，该子类必须为父类中所有抽象方法提供定义，否则子类也是抽象类
+
+**接口**
+
+1. 接口中所有属性默认 public static final ，必须赋初值
+2. 接口中所有方法默认为 public abstract
+
+**区别**
+
+|                | 接口                   | 抽象类                             |
+| -------------- | ---------------------- | ---------------------------------- |
+| **可定义方法** | 只能定义抽象方法       | 既能定义抽象方法，也能定义具体方法 |
+| **实现/继承**  | 接口可以实现多个       | 类只能继承1个                      |
+| **强调**       | 强调行为（方法）的组合 | 强调类的继承关系                   |
+
+## ==与equals
+
+==：对于基本类型比较值，对于引用数据类型比较内存地址
+
+equals()：
+
+1. 当类没有重写equals()方法，等价于“==”
+2. 当类重写了equals()方法，一般是比较内容上的相等，如String类
+
+## hashCode 与 equals 
+
+散列表判断时，先hashCode()后equals()，因为前者效率更高。
+
+equals()相等的两对象，hashCode()一定相等
+
+hashCode()相等的两对象，equals()不一定相等
+
+
+
+**重写equals()时，必须重写hashCode()**
+
+equals()默认比较内存地址，hashCode()默认计算内存地址（存疑，见具体实现）
+
+equals()重写后仅要求内容上的相等，内存地址可以不同
+
+若不重写hashCode()，造成equals()为true，hashCode()为false的情况
+
+## Java中只有值传递
+
+有些看起来很像传递引用，但实则是传递值
+
+```java
+... ...  
+class person {  
+public static String name = "Jack";  
+... ...  
+}  
+... ...  
+//定义一个改变对象属性的方法  
+public static void changeName(Person p) {  
+p.name = "Rose";  
+}  
+... ...  
+public static void main(String[] args) {  
+Person person = new Person();  
+System.out.println(person.name);  
+changeName(person);  
+System.out.println(person.name);  
+}  
+
+第一次显示：“Jack”
+第二次显示：“Rose”
+```
+
+看似传递person引用 在changeName()方法中通过引用p(person)改变对象
+
+实则是在栈上开辟了一块内存空间p，将person引用中的值（指向person对象在堆上的地址），复制给p，
+
+此时p和person共同指向person对象在堆上的地址，所以p可以对person对象进行更改
+
+but p和person是两个东西  依然是传递值
+
+## 深拷贝与浅拷贝
+
+深拷贝和浅拷贝最根本的区别在于是否真正获取一个对象的复制实体，而不是引用。
+
+假设B复制了A，修改A的时候，看B是否发生变化：
+
+如果B跟着**也变了**，说明是浅拷贝，拿人手短！只是增加了一个指针指向已存在的内存地址，AB引用指向堆中同一位置
+
+如果B**没有改变**，说明是深拷贝，自食其力！增加指针的同时，在堆上开辟了新的空间，AB引用指向不同位置
 
 # JVM
 

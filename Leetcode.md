@@ -39,6 +39,30 @@ class Solution {
 }
 ```
 
+## [二维数组中的查找](https://www.nowcoder.com/practice/abc3fe2ce8e146608e868a70efebf62e?tpId=13&tqId=11154&tPage=1&rp=1&ru=/ta/coding-interviews&qru=/ta/coding-interviews/question-ranking)
+
+脑筋急转弯题，这里重点拿 if 当 else if 使用不当造成的问题 
+
+```java
+public class Solution {
+    public boolean Find(int target, int [][] array) {
+        if(array[0].length==0) return false;
+        int row = array.length-1;
+        int col = 0;
+        while(row>=0&&col<array.length){
+            if(array[row][col]==target) return true;
+            //if(array[row][col]>target) row--; 边界情况时，row=-1
+            //if(array[row][col]<target) col++; 为if则-1超过索引边界    
+            else if(array[row][col]>target) row--;
+            else if(array[row][col]<target) col++;    
+        }
+        return false;
+    }
+}
+```
+
+
+
 # 题型总结
 
 ## 数字
@@ -604,7 +628,9 @@ sb.append(String str)/sb.append(StringBuilder sb)/sb.append(Char c)````//append�
 sb.toString();
 sb.deleteCharAt()//删除指定index的值
 sb.insert（,）//指定位置上插入各种类型的值  （不推荐使用，失去了算法题的意义）
-
+sb.reverse()
+sb.setLength()//设置大小，防止越界
+sb.setCharAt(,)//设置指定位置的值
 ```
 
 #### String、StringBuilder以及StringBuffer
@@ -674,9 +700,23 @@ public void exchange(int[] nums, int i, int j){
 	//nums[i]=nums[j];
 	//nums[j]=nums[i];
 }    
-    
-    
+
+//对多层递归 找到要求值 想要直接跳出 使用异常
+//方法中
+if(Index>word.length()-1) throw new RuntimeException();
+//主程序
+try{
+    调用方法
+}
+catch(RuntimeException e){
+    return //可以直接return出去
+}
   ```
 
 ​	
 
+       root.left=reConstructBinaryTree(Arrays.copyOfRange(pre[],1,rootIndex+1),Arrays.copyOfRange(in,0,rootIndex));
+        root.right=reConstructBinaryTree(Arrays.copyOfRange(pre[],rootIndex+1,pre.length),Arrays.copyOfRange(in,rootIndex+1,in.length));
+        
+    root.left=reConstructBinaryTree(Arrays.copyOfRange(pre,1,rootIndex+1),Arrays.copyOfRange(in,0,rootIndex));
+            root.right = reConstructBinaryTree(Arrays.copyOfRange(pre,rootIndex+1,pre.length),Arrays.copyOfRange(in,rootIndex+1,in.length));
