@@ -504,6 +504,7 @@ return 数字 最底层返回1 层层叠加
 ```java
 Integer.MAX_VALUE
 Integer.MIN_VALUE
+int a = Integer.valueOf(str); //string转int    
     
 Character.isDigit()//判断字符是否为数字
 Character.isLetter()//判断指定字符是否为字母 其中中文单个字也会被认为是字母！！！
@@ -584,6 +585,8 @@ List<List<Integer>> levels = new ArrayList<List<Integer>>();
 ArrayList（Collection<? extends E> c）
 ArrayList newlist = new ArrayList(arraylist);
 
+//无reverse方法，使用爸爸方法
+Collections.reverse(list)；
 
 boolean add(Element e) //增加指定元素到链表尾部.
 void add(int index, Element e) //增加指定元素到链表指定位置.
@@ -671,7 +674,7 @@ int[] arrays = new int[]{1, 2, 3, 4, 5};//数组初始化
 int[] nums = new int[n];//n个元素的数组
 
 
-throw  new RuntimeException("?????");
+throw new RuntimeException("?????");
 
 
 char s = 'a';//单引号是char类型，双引号是String类型
@@ -715,8 +718,3 @@ catch(RuntimeException e){
 
 ​	
 
-       root.left=reConstructBinaryTree(Arrays.copyOfRange(pre[],1,rootIndex+1),Arrays.copyOfRange(in,0,rootIndex));
-        root.right=reConstructBinaryTree(Arrays.copyOfRange(pre[],rootIndex+1,pre.length),Arrays.copyOfRange(in,rootIndex+1,in.length));
-        
-    root.left=reConstructBinaryTree(Arrays.copyOfRange(pre,1,rootIndex+1),Arrays.copyOfRange(in,0,rootIndex));
-            root.right = reConstructBinaryTree(Arrays.copyOfRange(pre,rootIndex+1,pre.length),Arrays.copyOfRange(in,rootIndex+1,in.length));

@@ -194,13 +194,25 @@ for循环会执行4次
 
 ## ConcurrentHashMap 
 
-JDK1.8以前： 采用分段锁 。put和 get **两次Hash**到达指定的HashEntry，第一次hash到达Segment,第二次到达Segment里面的Entry,然后在遍历entry链表。
+不管是1.7的HashEntry 还是1.8的Node，对其中的共享变量（val、next）都使用`volatile`关键字，保证多线程操作时，变量的可见性。
 
 
 
-JDK1.8以后：并发控制使用Synchronized和CAS来操作。put如果没有hash冲突就直接CAS插入，如果存在hash冲突，就加锁来保证线程安全。
+JDK1.8以前：采用分段锁 。ConcurrentHashMap 在存储方面是一个 Segment 数组，Segment 里维护了一个 HashEntry 数组，其中 Segment 继承自 ReentrantLock（可重入）。
+
+put和 get **两次Hash**到达指定的HashEntry，第一次hash到达Segment,第二次hash到达Segment里面的HashEntry ,然后在遍历HashEntry 链表。
+
+put方法先到达Segment先尝试获取锁，成功则找到HashEntry。失败则重试获取锁，大于最大重试次数则阻塞。
+
+get 方法就比较简单了，因为不涉及增、删、改操作，所以不存在并发故障问题。
 
 
+
+JDK1.8以后：并发控制使用CAS和Synchronized来操作。
+
+put方法若该位置第一次插入元素则使用CAS插入元素，如果存在hash冲突，则使用Synchronized对该Node加锁再进行链表元素的修改或添加。
+
+get 方法就比较简单了，因为不涉及增、删、改操作，所以不存在并发故障问题。
 
 ### ConcurrentHashMap 和 Hashtable 的区别
 
@@ -280,6 +292,53 @@ yield(): 让出cpu给其他线程, 并处于就绪状态。
 1. 资源一次性分配：一次性分配所有资源，这样就不会再有请求了：（破坏请求条件）
 2. 可剥夺资源：即当某进程获得了部分资源，但得不到其它资源，则释放已占有的资源（破坏不可剥夺条件）
 3. 资源有序分配法：系统给每类资源赋予一个编号，每一个进程按编号递增的顺序请求资源，释放则相反（破坏环路等待条件）
+
+### 实现多线程的方法
+
+1. 继承Thread类，重写run方法
+2. 实现Runnable接口，重写run方法，实现Runnable接口的实现类的实例对象作为Thread构造函数的target
+3. 通过Callable和FutureTask创建线程
+4. 通过线程池创建线程 
+
+
+
+**Thread和Runnable区别**
+
+`Thread` 和 `Runnable` 实际上是一种静态代理的实现方式，`thread.start()` 方法会调用native方法需要系统调用来控制时间分片。
+
+```java
+class Thread implements Runnable { //Thread实现了Runnable接口
+    private Runnable target;
+    
+    public Thread(Runnable target) {//有参构造方法传入Runnable对象
+        init(null, target, "Thread-" + nextThreadNum(), 0);
+        ····
+        this.target = target;
+    }
+    
+    public void run() {//执行重写后的run方法
+        if (target != null) {
+            target.run();
+        }
+    }    
+}
+
+```
+
+```java
+@FunctionalInterface //函数式接口 使用Lambda 表达式
+public interface Runnable {
+    public abstract void run(); //只有这一个抽象方法
+}
+```
+
+实现Runnable接口比继承Thread类所具有的优势：
+
+1. 可以避免java中的单继承的限制
+
+   如果你想写一个类C，但这个类C已经继承了一个类A，此时，你又想让C实现多线程。用继承Thread类的方式不行了。（因为单继承的局限性），此时，只能用Runnable接口，
+
+2. 有利于程序的健壮性，代码能够被多个线程共享，代码与数据是独立的。
 
 
 
@@ -423,6 +482,48 @@ uniqueInstance 采用 volatile 关键字修饰也是很有必要的， uniqueIns
 但是由于 JVM 具有指令重排的特性，执行顺序有可能变成 1->3->2。指令重排在单线程环境下不会出现问题，但是在多线程环境下会导致一个线程获得还没有初始化的实例。例如，线程 T1 执行了 1 和 3，此时 T2 调用 getUniqueInstance() 后发现 uniqueInstance 不为空，因此返回 uniqueInstance，如果是这个流程，多线程环境下就可能将一个未初始化的对象引用暴露出来，从而导致不可预料的结果。
 
 使用 volatile 可以禁止 JVM 的指令重排，保证在多线程环境下也能正常运行。
+
+### JDK*1.6* 对 synchronized 的锁优化
+
+**适应性自旋锁**、**锁消除**、**锁粗化**、**偏向锁和轻量级锁（锁升级）**
+
+
+
+**适应性自旋锁**
+
+自旋锁本身是有缺点的，它不能代替阻塞。自旋等待虽然避免了线程切换的开销，但它要占用处理器时间。如果锁被占用的时间很短，自旋等待的效果就会非常好。反之，如果锁被占用的时间很长，那么自旋的线程只会白浪费处理器资源。所以，自旋等待的时间必须要有一定的限度，如果自旋超过了限定次数（默认是10次，可以使用`-XX:PreBlockSpin`来更改）没有成功获得锁，就应当挂起线程。
+
+自适应意味着自旋的时间（次数）不再固定。某个线程如果自旋成功了，那么下次自旋的次数会更加多，因为虚拟机认为既然上次成功了，那么此次自旋也很有可能会再次成功，那么它就会允许自旋等待持续的次数更多。反之，如果对于某个锁，很少有自旋能够成功的，那么在以后要或者这个锁的时候自旋的次数会减少甚至省略掉自旋过程，以免浪费处理器资源。
+
+
+
+**锁消除**
+
+锁消除是指虚拟机即时编译器再运行时，对一些代码上要求同步，但是被检测到不可能存在共享数据竞争的锁进行消除。
+
+比如，StringBuffer类的append方法用了synchronized关键词，它是线程安全的。但我们可能仅在方法内部把StringBuffer当作局部变量使用。不同线程同时调用createStringBuffer()方法时，都会创建不同的StringBuffer对象，而此时的append操作若是使用synchronized加锁，就是白白浪费的系统资源。
+
+ 
+
+**锁粗化**
+
+代码中前后相邻的synchronized块的是同一锁对象,那么这几个synchronized块会被合并成一个较大的同步块, 这样做的好处在于线程在执行代码时就无需频繁申请写释放锁了,从而达到申请与释放锁一次,就可以执行完全部的同步代码块,从而提升了性能
+
+```dart
+    public String cancatString(String s1, String s2, String s3){
+        StringBuffer sb = new StringBuffer();
+        sb.append(s1);
+        sb.append(s2);
+        sb.append(s3);
+        return sb.toString();
+    }
+```
+
+上面代码中，连续的append方法就属于这种情况。这时虚拟机就会把锁同步的范围扩展（粗化）到整个操作序列的外部，即第一个append()操作之前直至最后一个append()操作之后，这样只需要加锁一次就可以了。
+
+
+
+
 
 ### 锁升级
 
