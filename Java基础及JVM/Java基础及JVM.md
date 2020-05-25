@@ -317,6 +317,69 @@ but p和person是两个东西  依然是传递值
 
 如果B**没有改变**，说明是深拷贝，自食其力！增加指针的同时，在堆上开辟了新的空间，AB引用指向不同位置
 
+## 动态绑定与静态绑定
+
+在java中，绑定分为静态绑定和动态绑定。也叫作前期绑定和后期绑定。
+
+动态绑定：在执行期间（非编译期）判断所引用对象的实际类型，根据其实际的类型调用其相应的方法。
+
+静态绑定：在程序执行以前（编译期）已经被绑定（即在编译过程中就已经知道这个方法到底是哪个类中的方法）
+
+
+
+java当中的方法只有final、static、private修饰的的方法和构造方法是静态绑定的。
+
+private修饰的方法：private修饰的方法是不能被继承的，因此子类无法访问父类中private修饰的方法。
+
+final修饰的方法：可以被子类继承，但是不能被子类重写（覆盖），所以在子类中调用的实际是父类中定义的final方法。
+
+static修饰的方法：可以被子类继承，但是不能被子类重写（覆盖），但是可以被子类隐藏。（若子类中定义了相同的方法，则会调用子类中定义的方法，but **当子类对象向上类型转换为父类对象时，不论子类中有没有定义这个静态方法，该对象都会使用父类中的静态方法**）
+
+举个栗子，当子类和父类存在同一个方法时，子类重写父类方法时，程序在运行时调用的方法时，是调用父类（的方法呢？还是调用子类的方法呢？动态绑定的调用子类，静态绑定的调用父类。
+
+```java
+public class Parent {
+    String name;
+    public static void shout(){
+        System.out.println("我是父类shout静态方法");
+    }
+
+    public void say(){
+        System.out.println("我是父类say方法");
+    }
+}
+public class Son extends Parent {
+    String name;
+    @Override
+    public static void shout(){
+        System.out.println("我是子类shout静态方法");
+	}	
+    public void say() {
+        System.out.println("我是子类say方法");
+    }
+}
+public class MainTest {
+    public static void main(String[] args) {
+        Parent parent = new Parent();
+        Parent son = new Son();
+        parent.say();
+        son.say();
+        parent.shout();
+        son.shout();
+    }
+}
+//我是父类say方法
+//我是子类say方法
+//我是父类shout静态方法
+//我是父类shout静态方法
+```
+
+
+
+java当中的方法只有final、static、private修饰的的方法和构造方法是静态绑定的。
+
+
+
 # JVM
 
 ## 内存区域
