@@ -61,7 +61,30 @@ public class Solution {
 }
 ```
 
+## [栈的压入、弹出序列](https://www.nowcoder.com/practice/d77d11405cc7470d82554cb392585106?tpId=13&tqId=11174&tPage=1&rp=1&ru=/ta/coding-interviews&qru=/ta/coding-interviews/question-ranking)
 
+```java
+public class Solution {
+    public boolean IsPopOrder(int [] pushA,int [] popA) {
+        if(pushA.length==0) return true;
+        Stack<Integer> stack = new Stack<Integer>();
+        int j=0;
+        for(int i=0;i<pushA.length;i++){
+          stack.push(pushA[i]);
+            //while(stack.peek()==popA[j]&&!stack.empty())
+            while(!stack.empty()&&stack.peek()==popA[j]){
+                stack.pop();
+                j++;
+            }
+      }
+        return stack.empty();
+    }
+}
+```
+
+错误运行会报java.util.EmptyStackException，栈空了还pop，可是我已经做出了!stack.empty()的判断了鸭。
+
+**判断语句中注意前后顺序**，先判断前面的条件，虽然有!stack.empty()保证不进入下一个while，但会先判断stack.peek()，此时栈已经空了，所以会报错。
 
 # 题型总结
 
@@ -624,6 +647,7 @@ s.indexOf("ak")//返回指定子字符串第一次出现在该字符串内的索
 s.contains("g")//判断字符串中是否包含指定字符。
 s.toLowerCase()//转小写
 s.trim()//用于删除字符串的头尾空白符
+s.substring(int beginIndex, int endIndex)//返回截取的新字符串，左闭右开
 char[] chars = s.toCharArray();
 
 StringBuilder sb = new StringBuilder();
