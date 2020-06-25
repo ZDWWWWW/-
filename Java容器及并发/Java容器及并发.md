@@ -1,6 +1,209 @@
 # 容器
 
-## ArrayList
+![img](Java容器及并发.assets/20180918155055147.png)
+
+**迭代器**
+
+迭代器是一种设计模式，他的工作方法是遍历并选择集合中的对象，只要拿到这个集合,使用迭代器就可以遍历这个集合，即我们无需关心该集合的底层结构是什么样子的。
+
+Iterator接口：包含三个方法：hasNext，next，remove、remove一般很少用到
+
+```java
+public interface Iterator<E> {
+
+    boolean hasNext();    //每次next之前，先调用此方法探测是否迭代到终点
+    E next();            //返回当前迭代元素 ，同时，迭代游标后移
+    void remove()
+```
+
+
+
+## List
+
+### Arraylist 源码解析
+
+**[https://www.jianshu.com/p/f863791e77fe]**
+
+**扩容机制**
+
+add操作时，判断当前size+1是否大于数组容量，若大于则grow扩容。
+
+```java
+    public boolean add(E e) {
+        ensureCapacityInternal(size + 1);  // Increments modCount!!
+        elementData[size++] = e;
+        return true;
+    }
+```
+
+```cpp
+    private void ensureCapacityInternal(int minCapacity) {
+        if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) {
+            minCapacity = Math.max(DEFAULT_CAPACITY, minCapacity);
+        }
+
+        ensureExplicitCapacity(minCapacity);
+    }
+```
+
+```cpp
+    private void ensureExplicitCapacity(int minCapacity) {
+        modCount++;
+
+        // overflow-conscious code
+        if (minCapacity - elementData.length > 0)
+            grow(minCapacity);
+    }
+```
+
+```cpp
+    private void grow(int minCapacity) {
+        // 1.首先获取到elementData数组的长度，作为原容量
+        int oldCapacity = elementData.length;
+        // 2.新容量 = 原容量 + 原容量/2；   1.5倍扩容
+        int newCapacity = oldCapacity + (oldCapacity >> 1);
+    
+        if (newCapacity - minCapacity < 0)
+            // 3.若1.5倍扩容后还不够，则将最小容量作为新容量
+            newCapacity = minCapacity;
+        if (newCapacity - MAX_ARRAY_SIZE > 0)
+            // 4.限制最大容量
+            newCapacity = hugeCapacity(minCapacity);
+        // 5.进行原有数据元素copy处理
+        elementData = Arrays.copyOf(elementData, newCapacity);
+    }
+```
+
+### LinkedList源码解析
+
+**[https://www.jianshu.com/p/6a9cb631b2ef]**
+
+**[https://www.jianshu.com/p/6bda2c1e6ee0]**
+
+增
+
+```java
+public boolean add(E e) {
+    linkLast(e);
+    return true;
+}
+//默认加在尾巴上
+void linkLast(E e) {
+    final Node<E> l = last;
+    //新建节点 前节点为last 本身值为e 后节点为null
+    final Node<E> newNode = new Node<>(l, e, null);
+    last = newNode;
+    //原本为空链表 加入第一个节点
+    if (l == null)
+        first = newNode;
+    else
+        l.next = newNode;
+    size++;
+    modCount++;
+}
+```
+
+```java
+//指定位置插入
+public void add(int index, E element) {
+    checkPositionIndex(index);
+
+    if (index == size)
+        linkLast(element);
+    else
+        linkBefore(element, node(index));
+}
+void linkBefore(E e, Node<E> succ) {
+    // assert succ != null;
+    final Node<E> pred = succ.prev;
+    //新建节点 前节点为pre 本身值为e 后节点为succ
+    final Node<E> newNode = new Node<>(pred, e, succ);
+    succ.prev = newNode;
+    if (pred == null)
+        first = newNode;
+    else
+        pred.next = newNode;
+    size++;
+    modCount++;
+}
+```
+
+查/改
+
+```java
+public E get(int index) {
+    checkElementIndex(index);
+    return node(index).item;
+}
+public E set(int index, E element) {
+	checkElementIndex(index);
+	Node<E> x = node(index);
+	E oldVal = x.item;
+	x.item = element;
+	return oldVal;
+}
+Node<E> node(int index) {
+    // index在链表的前边还是后边，size>>1 即取中点
+    if (index < (size >> 1)) {
+        Node<E> x = first;
+        for (int i = 0; i < index; i++)
+            x = x.next;
+        return x;
+    } else {
+        Node<E> x = last;
+        for (int i = size - 1; i > index; i--)
+            x = x.prev;
+        return x;
+    }
+}
+```
+
+删
+
+```csharp
+    public E remove(int index) {
+        checkElementIndex(index);
+        return unlink(node(index));
+    }
+
+    /**
+     * Unlinks non-null node x.
+     */
+    E unlink(Node<E> x) {
+        // assert x != null;
+        // 1.获取到待删除结点的数据域和地址域
+        final E element = x.item;
+        final Node<E> next = x.next;
+        final Node<E> prev = x.prev;
+
+        // 2.判断prev 是否为null
+        if (prev == null) {
+            // prev == null，则说明当前待删除的结点为头结点，需要将next结点的内存地址赋值给first  删除完毕后，next结点作为头结点
+            first = next;
+        } else {
+            // 将next结点的内存地址赋值给prev.next 并将删除结点的prev置为null          相当于“断开”双向链表的前一端
+            prev.next = next;
+            x.prev = null;
+        }
+   
+        // 3.判断next是否为null
+        if (next == null) {
+            // next == null，则说明当前待删除的结点为尾结点，需要将prev结点的内存地址赋值给last  删除完毕后，prev结点作为尾结点
+            last = prev;
+        } else {
+            // 将prev结点的内存地址赋值给next.prev 并将删除结点的next置为null          相当于“断开”双向链表的后一端
+            next.prev = prev;
+            x.next = null;
+        }
+
+        // 4.将删除结点的数据域置为null
+        x.item = null;
+        // 5.size自减1
+        size--;
+        modCount++;
+        return element;
+    }
+```
 
 ### Arraylist 与 LinkedList 区别?
 
@@ -25,21 +228,81 @@
 
   虽然新增和删除操作下，LinkedList由于需要访问到index所以时间复杂度退化到O(n)，但实际操作下来，访问到index的速度还是比 Arraylist 元素向后位/向前移一位的操作 要快的。
 
-### Arraylist的扩容机制
 
 
+## Set
 
+### HashSet
 
+底层由HashMap来实现。
 
+构造方法
 
+```java
+private transient HashMap<E,Object> map;
+//默认构造器
+public HashSet() {
+    map = new HashMap<>();
+}
+```
 
-## HashMap
+add方法通过HashMap的put方法实现，HashSet添加的元素是存放在HashMap的key位置上，而value取了默认常量PRESENT，是一个空对象。
+
+```java
+private static final Object PRESENT = new Object();
+
+public boolean add(E e) {
+    return map.put(e, PRESENT)==null;
+}
+```
+
+contains方法
+
+```java
+public boolean contains(Object o) {
+    return map.containsKey(o);
+}
+```
+
+### HashSet、LinkedSet和TreeSet使用场景
+
+|               | 有序性     | 实现及效率                        | 线程安全 |
+| ------------- | ---------- | --------------------------------- | -------- |
+| HashMap       | 无序       | 基于HashMap，时间复杂度O(1)       | 不安全   |
+| LinkedHashMap | 按插入顺序 | 基于LinkedHashMap，时间复杂度同上 | 不安全   |
+| TreeMap       | 按key顺序  | 基于红黑树，时间复杂度O(log n)    |          |
+
+### LinkedHashSet
+
+LinkedHashSet继承自HashSet
+
+狗仔方法
+
+```java
+    // 使用默认容量16, 默认装载因子0.75
+    public LinkedHashSet() {
+        super(16, .75f, true);
+    }
+```
+
+HashSet对应方法
+
+```java
+    // HashSet的构造方法
+    HashSet(int initialCapacity, float loadFactor, boolean dummy) {
+        map = new LinkedHashMap<>(initialCapacity, loadFactor);
+    }
+```
+
+LinkedHashSet继承自HashSet，它的添加、删除、查询等方法都是直接用的HashSet的方法，和HashSet唯一的不同就是它使用LinkedHashMap存储元素。
+
+## Map
 
 ### **HashMap 的数据结构**
 
 HashMap的主干是一个Node数组。Node是HashMap的基本组成单元，每一个Node包含一个key-value键值对。
 
-简单来说，**HashMap由数组+链表组成的**，数组是HashMap的主体，链表则是主要为了解决哈希冲突而存在的，当链表长度大于8，则转化为红黑树
+简单来说，**HashMap由数组+链表+红黑树组成的**，数组是HashMap的主体，链表则是主要为了解决哈希冲突而存在的，当链表长度大于8，则转化为红黑树
 
 ```java
 static class Node<K,V> implements Map.Entry<K,V> {
@@ -51,7 +314,18 @@ static class Node<K,V> implements Map.Entry<K,V> {
 
 ![111](Java容器及并发.assets/111.jpg)
 
-### JDK1.8后对hash算法和寻址算法
+### JDK1.8后HashMap所做优化
+
+|          | JDK1.7    | JDK1.8           |
+| -------- | --------- | ---------------- |
+| 数据结构 | 数组+链表 | 数组+链表+红黑树 |
+| hash算法 |           |                  |
+| 寻址算法 |           |                  |
+|          | 头插法    | 尾插法           |
+
+
+
+### JDK1.8后的hash算法和寻址算法
 
 **hash算法优化**
 
@@ -97,13 +371,6 @@ hashmap默认长度是16，负载因子是 0.75f，threshold =0.75*16=12，也�
 
 ### hashmap的get/put过程
 
-此题可以组成如下连环炮来问
-
-- 知道hashmap中put元素的过程是什么样么?
-- 知道hashmap中get元素的过程是什么样么？
-- 你还知道哪些hash算法？
-- 说说String中hashcode的实现?(此题很多大厂问过)
-
 ***知道hashmap中put元素的过程是什么样么?***
 
 对key的hashCode()做hash运算，计算index; 如果没碰撞直接放到bucket里； 如果碰撞了，以链表的形式存在buckets后； 如果碰撞导致链表过长(大于等于TREEIFY_THRESHOLD)，就把链表转换成红黑树(JDK1.8中的改动)； 如果节点已经存在就替换old value(保证key的唯一性) 如果bucket满了(超过load factor*current capacity)，就要resize。
@@ -117,7 +384,7 @@ hashmap默认长度是16，负载因子是 0.75f，threshold =0.75*16=12，也�
 
 ***你还知道哪些hash算法？***
 
-先说一下hash算法干嘛的，Hash函数是指把一个大范围映射到一个小范围。把大范围映射到一个小范围的目的往往是为了节省空间，使得数据容易保存。 它是一种单向密码体制，即它是一个从明文到密文的不可逆的映射，只有加密过程，没有解密过程。同时，Hash函数可以将任意长度的输入经过变化以后得到固定长度的输出。比较出名的有MurmurHash、MD4、MD5等等
+MD5 SHA-1
 
 ***说说String中hashcode的实现?(此题频率很高)***
 
@@ -162,13 +429,100 @@ for循环会执行4次
 
 ***为什么在解决hash冲突的时候，不直接用红黑树?而选择先用链表，再转红黑树?***
 
- 因为红黑树需要进行左旋，右旋，变色这些操作来保持平衡，而单链表不需要。 当元素小于8个当时候，此时做查询操作，链表结构已经能保证查询性能。当元素大于8个的时候，此时需要红黑树来加快查询速度，但是新增节点的效率变慢了。
-
-因此，如果一开始就用红黑树结构，元素太少，新增效率又比较慢，无疑这是浪费性能的。
+ 因为红黑树需要进行左旋，右旋，变色这些操作来保持平衡，而单链表不需要。 当元素小于8个当时候，此时做查询操作，链表结构已经能保证查询性能。如果一开始就用红黑树结构，无疑这是浪费性能的。
 
 ***我不用红黑树，用二叉查找树可以么?*** 
 
-可以。但是二叉查找树在特殊情况下会变成一条线性结构（这就跟原来使用链表结构一样了，造成很深的问题），遍历查找会非常慢。
+可以。但是二叉查找树在特殊情况下会变成一条线性结构，遍历查找会非常慢。
+
+***红黑树和二叉平衡树（AVL）之间的区别***
+
+二叉平衡树（AVL）要求严格平衡，所有结点的左右子树高度差不超过1。不管我们是执行插入还是删除操作，只要不满足上面的条件，就要通过旋转来保存平衡，可能发生大量旋转所以非常耗时，由此我们可以知道AVL树适合用于插入与删除次数比较少，但查找多的情况。AVL更平衡，树高度更低，查找效率更高。
+
+红黑树确保没有一条路径会比其他路径长出两倍，相对于要求严格的AVL树来说，它的旋转次数少，插入最多两次旋转，删除最多三次旋转，所以对于插入，删除操作较多的情况下，我们就用红黑树。
+
+
+
+
+
+
+
+![img](Java容器及并发.assets/1677914-20190717193539437-298743529.png)
+
+
+
+**红黑树定义**
+
+1. 根节点是黑色
+
+2. 叶子节点都为黑色，且为null
+
+3. 新加入到红黑树的节点为红色节点
+
+4. 红黑树不会出现相邻的红色节点（红色节点的父节点和子节点都为黑色）
+
+5. 从任意节点出发，到其每个叶子节点的路径中包含相同数量的黑色节点
+
+   
+
+**性质**
+
+从根节点到叶子节点的最长路径不大于最短路径的2倍
+
+
+
+变色
+
+左旋转
+
+![img](Java容器及并发.assets/v2-6cb033d91d7379b22d2dcd3d0f201c54_720w-1592829051030.jpg)
+
+
+
+右旋转
+
+![img](Java容器及并发.assets/v2-24f4d2e75d0ccf54aeb6c2d5b36092f7_720w.jpg)
+
+
+
+**直接插入：**
+
+新插入的节点父节点是黑色
+
+**仅变色：**
+
+1. 新插入的节点是根节点，红变黑
+2. 新插入的节点父节点是红色，叔节点也是红色，那么将父与叔节点标记为黑色，祖节点为红色（祖节点变色原因是保证每个叶子节点的路径中包含相同数量的黑色节点），然后把祖节点当作新插入的节点递归重复这一判断。
+
+**变色加旋转：**
+
+**[https://www.cnblogs.com/LiaHon/p/11203229.html]**
+
+新插入的节点父节点是红色，叔节点也是黑色或者为null
+
+1. 左左节点旋转(/)       这种情况下，父节点和插入的节点都是左节点
+
+![img](Java容器及并发.assets/1677914-20190717193806554-1537470656.png)
+
+
+
+2. 右右节点旋转(\\)    这种情况下，父节点和插入的节点都是右节点
+
+![img](Java容器及并发.assets/1677914-20190717193849686-899589688.png)
+
+3 左右节点旋转(<)   这种情况下，父节点是左节点，插入的节点是右节点
+
+![img](Java容器及并发.assets/1677914-20190717193816730-1687335198.png)
+
+4 右左节点旋转(>)  这种情况下，父节点是右节点，插入的节点是左节点
+
+![img](Java容器及并发.assets/1677914-20190717193838612-1639123275.png)
+
+
+
+
+
+
 
 ### HashMap 和 Hashtable 的区别
 
@@ -186,15 +540,58 @@ for循环会执行4次
 
 5. **底层数据结构：** JDK1.8 以后的 HashMap 在解决哈希冲突时有了较大的变化，当链表长度大于阈值（默认为8）（将链表转换成红黑树前会判断，如果当前数组的长度小于 64，那么会选择先进行数组扩容，而不是转换为红黑树）时，将链表转化为红黑树，以减少搜索时间。Hashtable 没有这样的机制。
 
-### HashMap 多线程操作导致死循环问题
+### HashMap 高并发下导致死循环问题
 
-## HashSet
+死循环问题在JDK1.7扩容时发生
 
-底层由HashMap来实现，HashSet使用成员对象来计算hashcode值，对于两个对象来说hashcode可能相同，所以equals()方法用来判断对象的相等性。
+JDK1.7采用头插法 **[https://www.cnblogs.com/mr-wuxiansheng/p/12865080.html]**
 
-## ConcurrentHashMap 
+链表头插法的会颠倒原来一个散列桶里面链表的顺序。在并发的时候原来的顺序被另外一个线程a颠倒了，而被挂起线程b恢复后拿扩容前的节点和顺序继续完成第一次循环后，又遵循a线程扩容后的链表顺序重新排列链表中的顺序，最终形成了环。
 
-不管是1.7的HashEntry 还是1.8的Node，对其中的共享变量（val、next）都使用`volatile`关键字，保证多线程操作时，变量的可见性。
+JDK1.8以后采用尾插法，不会造成死循环问题，不过还是会有并发问题。原因在于其内部操作不是原子的，譬如++size之类的操作依然会产生并发问题。
+
+### HashMap、LinkedHashMap和TreeMap使用场景
+
+|               | 有序性     | 实现及效率                                           | 线程安全 |
+| ------------- | ---------- | ---------------------------------------------------- | -------- |
+| HashMap       | 无序       | 基于散列表，无冲突时间复杂度O(1)，冲突时间复杂度O(n) | 不安全   |
+| LinkedHashMap | 按插入顺序 | 基于HashMap和双向链表，时间复杂度同上                | 不安全   |
+| TreeMap       | 按key顺序  | 基于红黑树，时间复杂度O(log n)                       | 不安全   |
+
+### LinkedHashMap
+
+LinkedHashMap继承了HashMap
+
+其节点Entry`继承自`HashMap.Node，通过before、after维护了一个按插入顺序的双向链表。这里要和next区分开，next是指发生hash碰撞时生成链表的下一个。
+
+```java
+static class Entry<K,V> extends HashMap.Node<K,V> {
+    Entry<K,V> before, after;
+    Entry(int hash, K key, V value, Node<K,V> next) {
+        super(hash, key, value, next);
+    }
+}
+```
+put操作时，相比HashMap，多了一个操作，即将put的新节点加到双向链表的尾端（LinkedHashMap内部两个成员变量`head tail`,分别指向内部双向链表的表头、表尾。）
+
+```java
+private void linkNodeLast(LinkedHashMap.Entry<K,V> p) {
+    LinkedHashMap.Entry<K,V> last = tail;
+    tail = p;
+    if (last == null)
+        head = p;
+    else {
+        p.before = last;
+        last.after = p;
+    }
+}
+```
+
+![img](https://images2015.cnblogs.com/blog/249993/201612/249993-20161215143120620-1544337380.png)
+
+### ConcurrentHashMap 
+
+不管是1.7的HashEntry 还是1.8的Node，对其中的共享变量（val、next）都使用`volatile`关键字，保证多线程操作时，变量的可见性。`volatile`不保证原子性，所以put 操作时仍然需要加锁处理。
 
 
 
@@ -202,7 +599,7 @@ JDK1.8以前：采用分段锁 。ConcurrentHashMap 在存储方面是一个 Seg
 
 put和 get **两次Hash**到达指定的HashEntry，第一次hash到达Segment,第二次hash到达Segment里面的HashEntry ,然后在遍历HashEntry 链表。
 
-put方法先到达Segment先尝试获取锁，成功则找到HashEntry。失败则重试获取锁，大于最大重试次数则阻塞。
+put方法先到达Segment先尝试获取锁，成功则找到HashEntry。失败则自旋获取锁，大于最大重试次数则阻塞获取锁。
 
 get 方法就比较简单了，因为不涉及增、删、改操作，所以不存在并发故障问题。
 
@@ -220,15 +617,17 @@ ConcurrentHashMap 和 Hashtable 的区别主要体现在实现线程安全的方
 
 - **底层数据结构：** 
 
-  JDK1.7的 ConcurrentHashMap 底层采用 **分段的数组+链表** 实现，JDK1.8 采用的数据结构跟HashMap1.8的结构一样，数组+链表/红黑二叉树。
+  JDK1.7的 ConcurrentHashMap 底层采用 分段的数组+链表 实现，JDK1.8 采用的数据结构跟HashMap1.8的结构一样，数组+链表+红黑树。
 
-  Hashtable 和 JDK1.8 之前的 HashMap 的底层数据结构类似都是采用 **数组+链表** 的形式。
+  Hashtable 和 JDK1.8 之前的 HashMap 的底层数据结构类似都是采用 数组+链表 的形式。
 
 - **实现线程安全的方式（重要）：**
 
-  ① **在JDK1.7的时候，ConcurrentHashMap（分段锁）** 对整个桶数组进行了分割分段(Segment)，每一把锁只锁容器其中一部分数据，多线程访问容器里不同数据段的数据，就不会存在锁竞争，提高并发访问率。 **到了 JDK1.8 的时候已经摒弃了Segment的概念，而是直接用 Node 数组+链表+红黑树的数据结构来实现，并发控制使用 synchronized 和 CAS 来操作。（JDK1.6以后 对 synchronized锁做了很多优化）** 整个看起来就像是优化过且线程安全的 HashMap，虽然在JDK1.8中还能看到 Segment 的数据结构，但是已经简化了属性，只是为了兼容旧版本；
+  ① **在JDK1.7的时候，ConcurrentHashMap（分段锁）** 对整个桶数组进行了分割分段(Segment)，每一把锁只锁容器其中一部分数据，多线程访问容器里不同数据段的数据，就不会存在锁竞争，提高并发访问率。 **到了 JDK1.8 的时候已经摒弃了Segment的概念，而是直接用 Node 数组+链表+红黑树的数据结构来实现，并发控制使用 CAS 和synchronized 来操作。** 
 
   ② **Hashtable(同一把锁)** :使用 synchronized 来保证线程安全，效率非常低下。当一个线程访问同步方法时，其他线程也访问同步方法，可能会进入阻塞或轮询状态，如使用 put 添加元素，另一个线程不能使用 put 添加元素，也不能使用 get，竞争会越来越激烈效率越低。
+
+
 
 # 并发
 
@@ -265,19 +664,19 @@ yield(): 让出cpu给其他线程, 并处于就绪状态。
 
 ### 线程与进程的区别
 
-**线程**与进程相似，但线程是一个比进程更小的执行单位。一个进程在其执行的过程中可以产生多个线程。
+**进程**是程序的一次执行过程，是系统运行程序的基本单位。**是资源分配的最小单位**
 
-**进程**是程序的一次执行过程，是系统运行程序的基本单位。
+**线程**与进程相似，但线程是一个比进程更小的执行单位。一个进程在其执行的过程中可以产生多个线程。**是CPU调度的最小单位**
 
 线程和进程最大的不同在于基本上各进程是独立的，而各线程则不一定，因为同一进程中的线程极有可能会相互影响。
 
 ### 死锁
 
-多个线程同时被阻塞，它们中的一个或者全部都在等待某个资源被释放。由于线程被无限期地阻塞，因此程序不可能正常终止。
+多个并发进程因争夺系统资源而产生相互等待的现象。
 
 形成死锁的4个条件
 
-1. 互斥条件：进程要求对所分配的资源进行排它性控制，即在一段时间内某资源仅为一进程所占用。
+1. 互斥条件：某种资源一次只允许一个进程访问，即该资源一旦分配给某个进程，其他进程就不能再访问，直到该进程访问结束。
 
 2. 请求和保持条件：当进程因请求资源而阻塞时，对已获得的资源保持不放。
 
@@ -649,6 +1048,14 @@ AQS全称为AbstractQueuedSynchronizer,即抽象同步队列。
 
 AQS是实现同步器的基础组件，并发包中各种锁也是由AQS所实现
 
+AQS是一个FIFO的**双向队列**，队列中元素的类型为Node，每个Node中有一个thread变量用来存放进入AQS的线程。
+
+AQS中维持了一个单一的状态信息state，**线程同步的关键是通过CAS对状态值state的操作**。对于不同的锁和同步器，state的含义不同。对ReentrantLock的实现，state表示可重入次数。
+
+AQS有一个内部类ConditonObject，具有await() signal() signalAll() 3个方法，类似于wait(), notify()和notifyAll() 方法。**一个Lock对象可以创建多个ConditonObject对象，在每个ConditonObject对象中维护一个Node队列**，用来存放被await()方法阻塞的线程。
+
+![AQS](Java容器及并发.assets/AQS.jpg)
+
 ### ReentrantLock和synchronized的区别
 
 ### ReentrantReadWriteLock 读写锁
@@ -704,7 +1111,7 @@ AQS中维护了一个state状态，读锁用高16位，表示持有读锁的线�
 
 ### 线程池的常见参数
 
-（1）corePoolSize：线程池中常驻核心线程数
+（1）corePoolSize：线程池中常驻核心线程数如，果运行的线程等于或多于corePoolSize，则将任务加入BlockingQueue，如果无法将任务加入BlockingQueue（队列已满），则创建新的线程来处理任务。
 
 （2）maximumPoolSize：线程池能够容纳同时执行的最大线程数，此值必须大于等于1
 
@@ -717,3 +1124,6 @@ AQS中维护了一个state状态，读锁用高16位，表示持有读锁的线�
 （6）threadFactory：表示生成线程池中的工作线程的线程工厂，用于创建线程，一般为默认线程工厂即可
 
 （7）handler：拒绝策略，表示当队列满了并且工作线程大于等于线程池的最大线程数（maximumPoolSize）时采取的策略，如抛弃异常、摸摸丢弃
+
+
+

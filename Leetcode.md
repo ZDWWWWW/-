@@ -141,7 +141,14 @@ if(ans > (Integer.MAX_VALUE - digit) / 10)
 //int 转 char 即 i + '0'		char c = i+'0'
 ```
 
+#### 整数异或
 
+位运算中异或的性质：**两个相同数字异或等于0**，**一个数和0异或还是它本身**。
+
+```java
+int c=a^b
+    
+```
 
 ## 字符串
 
@@ -522,6 +529,15 @@ return 数字 最底层返回1 层层叠加
 
 # 数据结构
 
+## 位运算
+
+```java
+int c=a^b;// 两个相同数字异或等于0，一个数和0异或还是它本身
+temp = temp>>1; //向右移一位
+```
+
+
+
 ## 基本类型
 
 ```java
@@ -533,8 +549,6 @@ Character.isDigit()//判断字符是否为数字
 Character.isLetter()//判断指定字符是否为字母 其中中文单个字也会被认为是字母！！！
 Character.isLowerCase(char c)　|| Character.isUpperCase(char c)　　//判断c是否是字母字符，前面LowerCase是小写，后面UpperCase是大写，是返回True，否则返回False   
 ```
-
-
 
 ## Stack
 
@@ -738,6 +752,9 @@ try{
 catch(RuntimeException e){
     return //可以直接return出去
 }
+
+//短路求值原理
+作为"&&"和"||"操作符的操作数表达式，这些表达式在进行求值时，只要最终的结果已经可以确定是真或假，求值过程便告终止，这称之为短路求值（short-circuit evaluation）
   ```
 
 ​	
