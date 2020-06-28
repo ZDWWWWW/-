@@ -6,7 +6,7 @@
 
 迭代器是一种设计模式，他的工作方法是遍历并选择集合中的对象，只要拿到这个集合,使用迭代器就可以遍历这个集合，即我们无需关心该集合的底层结构是什么样子的。
 
-Iterator接口：包含三个方法：hasNext，next，remove、remove一般很少用到
+Iterator接口：包含三个方法：hasNext，next，remove，remove一般很少用到
 
 ```java
 public interface Iterator<E> {
@@ -229,72 +229,6 @@ Node<E> node(int index) {
   虽然新增和删除操作下，LinkedList由于需要访问到index所以时间复杂度退化到O(n)，但实际操作下来，访问到index的速度还是比 Arraylist 元素向后位/向前移一位的操作 要快的。
 
 
-
-## Set
-
-### HashSet
-
-底层由HashMap来实现。
-
-构造方法
-
-```java
-private transient HashMap<E,Object> map;
-//默认构造器
-public HashSet() {
-    map = new HashMap<>();
-}
-```
-
-add方法通过HashMap的put方法实现，HashSet添加的元素是存放在HashMap的key位置上，而value取了默认常量PRESENT，是一个空对象。
-
-```java
-private static final Object PRESENT = new Object();
-
-public boolean add(E e) {
-    return map.put(e, PRESENT)==null;
-}
-```
-
-contains方法
-
-```java
-public boolean contains(Object o) {
-    return map.containsKey(o);
-}
-```
-
-### HashSet、LinkedSet和TreeSet使用场景
-
-|               | 有序性     | 实现及效率                        | 线程安全 |
-| ------------- | ---------- | --------------------------------- | -------- |
-| HashMap       | 无序       | 基于HashMap，时间复杂度O(1)       | 不安全   |
-| LinkedHashMap | 按插入顺序 | 基于LinkedHashMap，时间复杂度同上 | 不安全   |
-| TreeMap       | 按key顺序  | 基于红黑树，时间复杂度O(log n)    |          |
-
-### LinkedHashSet
-
-LinkedHashSet继承自HashSet
-
-狗仔方法
-
-```java
-    // 使用默认容量16, 默认装载因子0.75
-    public LinkedHashSet() {
-        super(16, .75f, true);
-    }
-```
-
-HashSet对应方法
-
-```java
-    // HashSet的构造方法
-    HashSet(int initialCapacity, float loadFactor, boolean dummy) {
-        map = new LinkedHashMap<>(initialCapacity, loadFactor);
-    }
-```
-
-LinkedHashSet继承自HashSet，它的添加、删除、查询等方法都是直接用的HashSet的方法，和HashSet唯一的不同就是它使用LinkedHashMap存储元素。
 
 ## Map
 
@@ -572,6 +506,7 @@ static class Entry<K,V> extends HashMap.Node<K,V> {
     }
 }
 ```
+
 put操作时，相比HashMap，多了一个操作，即将put的新节点加到双向链表的尾端（LinkedHashMap内部两个成员变量`head tail`,分别指向内部双向链表的表头、表尾。）
 
 ```java
@@ -595,7 +530,7 @@ private void linkNodeLast(LinkedHashMap.Entry<K,V> p) {
 
 
 
-JDK1.8以前：采用分段锁 。ConcurrentHashMap 在存储方面是一个 Segment 数组，Segment 里维护了一个 HashEntry 数组，其中 Segment 继承自 ReentrantLock（可重入）。
+**JDK1.8以前**：采用分段锁 （Segment+ReentrantLock）。ConcurrentHashMap 在存储方面是一个 Segment 数组，Segment 里维护了一个 HashEntry 数组，其中 Segment 继承自 ReentrantLock（可重入），Segment类本身就是一个锁。
 
 put和 get **两次Hash**到达指定的HashEntry，第一次hash到达Segment,第二次hash到达Segment里面的HashEntry ,然后在遍历HashEntry 链表。
 
@@ -605,11 +540,21 @@ get 方法就比较简单了，因为不涉及增、删、改操作，所以不�
 
 
 
-JDK1.8以后：并发控制使用CAS和Synchronized来操作。
+**JDK1.8以后**：并发控制使用CAS和Synchronized来操作。
 
 put方法若该位置第一次插入元素则使用CAS插入元素，如果存在hash冲突，则使用Synchronized对该Node加锁再进行链表元素的修改或添加。
 
 get 方法就比较简单了，因为不涉及增、删、改操作，所以不存在并发故障问题。
+
+
+
+**为什么用Synchronized取代ReentrantLock**
+
+即为什么不让Node继承ReentrantLock，也可以把锁细化，使用node.lock()就可以把node单独锁住，why not？
+
+原因是锁粒度这么小的情况下，出现并发争抢的可能性较低，且出现争抢时只要线程可以在30到50次自旋里拿到锁,那么Synchronized就不会升级为重量级锁,而等待的线程也就不用被挂起,我们也就少了挂起和唤醒这个上下文切换的过程开销.（涉及Synchronized锁优化/升级）
+
+
 
 ### ConcurrentHashMap 和 Hashtable 的区别
 
@@ -626,6 +571,80 @@ ConcurrentHashMap 和 Hashtable 的区别主要体现在实现线程安全的方
   ① **在JDK1.7的时候，ConcurrentHashMap（分段锁）** 对整个桶数组进行了分割分段(Segment)，每一把锁只锁容器其中一部分数据，多线程访问容器里不同数据段的数据，就不会存在锁竞争，提高并发访问率。 **到了 JDK1.8 的时候已经摒弃了Segment的概念，而是直接用 Node 数组+链表+红黑树的数据结构来实现，并发控制使用 CAS 和synchronized 来操作。** 
 
   ② **Hashtable(同一把锁)** :使用 synchronized 来保证线程安全，效率非常低下。当一个线程访问同步方法时，其他线程也访问同步方法，可能会进入阻塞或轮询状态，如使用 put 添加元素，另一个线程不能使用 put 添加元素，也不能使用 get，竞争会越来越激烈效率越低。
+
+  
+
+## Set
+
+### HashSet
+
+底层由HashMap来实现。
+
+构造方法
+
+```java
+private transient HashMap<E,Object> map;
+//默认构造器
+public HashSet() {
+    map = new HashMap<>();
+}
+```
+
+add方法通过HashMap的put方法实现，HashSet添加的元素是存放在HashMap的key位置上，而value取了默认常量PRESENT，是一个空对象。
+
+```java
+private static final Object PRESENT = new Object();
+
+public boolean add(E e) {
+    return map.put(e, PRESENT)==null;
+}
+```
+
+contains方法
+
+```java
+public boolean contains(Object o) {
+    return map.containsKey(o);
+}
+```
+
+**HashSet要球集合对象重写equals方法和hashCode方法**
+
+比如HashSet存储Student对象，规定当学生的姓名、年龄、性别相等时，认为学生对象是相等的。此时学生对象重写equal的同时也要重写hashcode，否则会导致集合中存储多个相等的对象。
+
+### HashSet、LinkedHashSet和TreeSet使用场景
+
+|               | 有序性     | 实现及效率                        | 线程安全 |
+| ------------- | ---------- | --------------------------------- | -------- |
+| HashMap       | 无序       | 基于HashMap，时间复杂度O(1)       | 不安全   |
+| LinkedHashMap | 按插入顺序 | 基于LinkedHashMap，时间复杂度同上 | 不安全   |
+| TreeMap       | 按key顺序  | 基于红黑树，时间复杂度O(log n)    |          |
+
+### LinkedHashSet
+
+LinkedHashSet继承自HashSet
+
+狗仔方法
+
+```java
+    // 使用默认容量16, 默认装载因子0.75
+    public LinkedHashSet() {
+        super(16, .75f, true);
+    }
+```
+
+HashSet对应方法
+
+```java
+    // HashSet的构造方法
+    HashSet(int initialCapacity, float loadFactor, boolean dummy) {
+        map = new LinkedHashMap<>(initialCapacity, loadFactor);
+    }
+```
+
+LinkedHashSet继承自HashSet，它的添加、删除、查询等方法都是直接用的HashSet的方法，和HashSet唯一的不同就是它使用LinkedHashMap存储元素。
+
+- 
 
 
 
@@ -695,13 +714,11 @@ yield(): 让出cpu给其他线程, 并处于就绪状态。
 ### 实现多线程的方法
 
 1. 继承Thread类，重写run方法
-2. 实现Runnable接口，重写run方法，实现Runnable接口的实现类的实例对象作为Thread构造函数的target
-3. 通过Callable和FutureTask创建线程
+2. 实现Runnable接口，重写run方法，将实现类的实例对象作为Thread构造函数的参数
+3. 实现Callable接口，重写call方法，将实现类作为参数创建FutureTask对象，将FutureTask对象作为Thread构造函数的参数
 4. 通过线程池创建线程 
 
-
-
-**Thread和Runnable区别**
+### **Thread和Runnable区别**
 
 `Thread` 和 `Runnable` 实际上是一种静态代理的实现方式，`thread.start()` 方法会调用native方法需要系统调用来控制时间分片。
 
@@ -739,9 +756,30 @@ public interface Runnable {
 
 2. 有利于程序的健壮性，代码能够被多个线程共享，代码与数据是独立的。
 
+## Volatile
 
+### 特性
+
+被volatile修饰的共享变量，就会具有以下两个特性：
+
+1. **保证了不同线程对该变量操作的内存可见性。**
+
+   volatile关键字解决可见性问题，通俗来说就是线程A对变量的修改，会直接刷新到主内存，同时将其他线程的工作内存中变量缓存失效过期。线程B当中，在对变量进行读取的时候，发现变量已过期，将从主内存中读取。
+
+2. **禁止指令重排序。**
+
+   volatile的happen-before原则：对一个volatile变量的写操作happen-before对此变量的任意操作(当然也包括写操作了)。
+
+### volatile和synchronized的区别
+
+- volatile关键字是线程同步的轻量级实现，所以volatile性能肯定比synchronized关键字要好。但是volatile关键字只能用于变量而synchronized关键字可以修饰方法、类以及代码块。
+- 多线程访问volatile关键字不会发生阻塞，而synchronized关键字可能会发生阻塞
+- volatile关键字能保证数据的可见性，但不能保证数据的原子性。synchronized关键字两者都能保证。
+- volatile关键字主要用于解决变量在多个线程之间的可见性，而 synchronized关键字解决的是多个线程之间访问资源的同步性。
 
 ## JMM-Java内存模型
+
+​	Java内存模型规定了所有的变量都存储在主内存中，每条线程还有自己的工作内存，线程的工作内存中保存了该线程中使用到的变量的主内存副本拷贝，线程对变量的所有操作都必须在工作内存中进行，而不能直接读写主内存。不同的线程之间也无法直接访问对方工作内存中的变量，线程间变量的传递均需要自己的工作内存和主存之间进行数据同步进行。
 
 方法中的基本类型本地变量将直接存储在工作内存的栈帧结构中；（虚拟机栈）
 
@@ -753,94 +791,37 @@ public interface Runnable {
 
  Java内存模型是围绕着并发编程中**原子性**、**可见性**、**有序性**这三个特征来建立的
 
-### ~~内存交互~~
-
-- ~~lock   （锁定）：作用于主内存的变量，把一个变量标识为线程独占状态~~
-
-- ~~unlock （解锁）：作用于主内存的变量，它把一个处于锁定状态的变量释放出来，释放后的变量才可以被其他线程锁定~~
-
-- ~~read  （读取）：作用于主内存变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的load动作使用~~
-
-- ~~load   （载入）：作用于工作内存的变量，它把read操作从主存中变量放入工作内存中~~
-
-- ~~use   （使用）：作用于工作内存中的变量，它把工作内存中的变量传输给执行引擎，每当虚拟机遇到一个需要使用到变量的值，就会使用到这个指令~~
-
-- ~~assign （赋值）：作用于工作内存中的变量，它把一个从执行引擎中接受到的值放入工作内存的变量副本中~~
-
-- ~~store  （存储）：作用于主内存中的变量，它把一个从工作内存中一个变量的值传送到主内存中，以便后续的write使用~~
-
-- ~~write 　（写入）：作用于主内存中的变量，它把store操作从工作内存中得到的变量的值放入主内存的变量中~~
-
 ### 内存模型三大特性
 
-**原子性：**例如上面八项操作，在操作系统里面是不可分割的单元。被synchronized关键字或其他锁包裹起来的操作也可以认为是原子的。从一个线程观察另外一个线程的时候，看到的都是一个个原子性的操作。
+**原子性：**原子性是指一个操作或多个操作要么全部执行，且执行的过程不会被任何因素打断，要么就都不执行。被synchronized关键字或Lock包裹起来的操作也可以认为是原子的。
 
-**可见性：**每个工作线程都有自己的工作内存，所以当某个线程修改完某个变量之后，在其他的线程中，未必能观察到该变量已经被修改。volatile关键字要求被修改之后的变量要求立即更新到主内存，每次使用前从主内存处进行读取。因此volatile可以保证可见性。除了volatile以外，synchronized和final也能实现可见性。synchronized保证unlock之前必须先把变量刷新回主内存。final修饰的字段在构造器中一旦完成初始化，并且构造器没有this逸出，那么其他线程就能看到final字段的值。
+**可见性：**可见性是指当一个线程修改了共享变量后，其他线程能够立即得到修改的值。volatile关键字要求被修改之后的变量立即更新到主内存，当其它线程需要读取该变量时，会去主内存中读取新值。除了volatile以外，synchronized和Lock也能实现可见性。线程在释放锁之前，会把共享变量值都刷回主存，但是synchronized和Lock的开销都更大。
 
-**有序性：**java的有序性跟线程相关。如果在线程内部观察，会发现当前线程的一切操作都是有序的。如果在线程的外部来观察的话，会发现线程的所有操作都是无序的。因为JMM的工作内存和主内存之间存在延迟，而且java会对一些指令进行重新排序。volatile和synchronized可以保证程序的有序性，
+**有序性：**有序性是指程序按照代码的先后顺序执行。java会对一些指令进行重排序。volatile和synchronized可以保证程序的有序性，
 
 ==重排序过程不会影响到单线程程序的执行，却会影响到多线程并发执行的正确性==
 
 ### happens-before原则
 
-由于 **指令重排序** 的存在，两个操作之间有happen-before关系， **并不意味着前一个操作必须要在后一个操作之前执行。 仅仅要求前一个操作的执行结果对于后一个操作是可见的，并且前一个操作 按顺序** 排在第二个操作之前。
+由于 指令重排序 的存在，两个操作之间有happen-before关系， **并不意味着前一个操作必须要在后一个操作之前执行。 仅仅要求前一个操作的执行结果对于后一个操作是可见的，并且前一个操作 按顺序排在第二个操作之前。**
 
 单线程happen-before原则：在同一个线程中，书写在前面的操作happen-before后面的操作。
 
 锁的happen-before原则：同一个锁的unlock操作happen-before此锁的lock操作。
 
-volatile的happen-before原则：对一个volatile变量的写操作happen-before对此变量的任意操作(当然也包括写操作了)。
+volatile的happen-before原则：对一个volatile变量的写操作happen-before对此变量读写操作。
 
 happen-before的传递性原则：如果A操作 happen-before B操作，B操作happen-before C操作，那么A操作happen-before C操作。
 
-线程启动的happen-before原则：同一个线程的start方法happen-before此线程的其它方法。
-
-线程中断的happen-before原则：对线程interrupt方法的调用happen-before被中断线程的检测到中断发送的代码。
-
-线程终结的happen-before原则：线程中的所有操作都happen-before线程的终止检测。
-
-对象创建的happen-before原则：一个对象的初始化完成先于他的finalize方法调用。
-
-
-
-## volatile
-
-### 特性及原理
-
-被volatile修饰的共享变量，就会具有以下两个特性：
-
-1. 保证了不同线程对该变量操作的内存可见性。
-
-   volatile关键字解决可见性问题，通俗来说就是线程A对变量的修改，会直接刷新到主内存，同时将其他线程的工作内存中data变量缓存失效过期。线程B当中，在对变量进行读取的时候，发现变量已过期，将从主内存中读取。
-
-2. 禁止指令重排序。
-
-   volatile的happen-before原则：对一个volatile变量的写操作happen-before对此变量的任意操作(当然也包括写操作了)。
-
-### 原理
-
-**可见性**
-
-1. 一旦data变量定义的时候前面加了volatile来修饰的话，那么线程1只要修改data变量的值，就会在修改完自己本地工作内存的data变量值之后，强制将这个data变量最新的值刷回主内存
-2. 如果此时别的线程的工作内存中有这个data变量的本地缓存，也就是一个变量副本的话，那么会强制让其他线程的工作内存中的data变量缓存直接失效过期，不允许再次读取和使用了！
-3. 如果线程2在代码运行过程中再次需要读取data变量的值，此时尝试从本地工作内存中读取，就会发现这个data = 0已经过期了！此时，他就必须重新从主内存中加载data变量最新的值！
-
-### volatile和synchronized的区别
-
-- **volatile关键字**是线程同步的**轻量级实现**，所以**volatile性能肯定比synchronized关键字要好**。但是**volatile关键字只能用于变量而synchronized关键字可以修饰方法以及代码块**。synchronized关键字在JavaSE1.6之后进行了主要包括为了减少获得锁和释放锁带来的性能消耗而引入的偏向锁和轻量级锁以及其它各种优化之后执行效率有了显著提升，**实际开发中使用 synchronized 关键字的场景还是更多一些**。
-- **多线程访问volatile关键字不会发生阻塞，而synchronized关键字可能会发生阻塞**
-- **volatile关键字能保证数据的可见性，但不能保证数据的原子性。synchronized关键字两者都能保证。**
-- **volatile关键字主要用于解决变量在多个线程之间的可见性，而 synchronized关键字解决的是多个线程之间访问资源的同步性。**
-
-## synchronized
+## Synchronized
 
 ### 使用
 
-- **修饰实例方法:** 作用于当前对象实例加锁，进入同步代码前要获得当前对象实例的锁
+- **修饰实例方法:** 作用于当前对象实例加锁
 
-- **修饰静态方法:** 也就是给当前类加锁，会作用于类的所有对象实例，因为静态成员不属于任何一个实例对象，是类成员（ static 表明这是该类的一个静态资源，不管new了多少个对象，只有一份）。所以如果一个线程 A 调用一个实例对象的非静态 synchronized 方法，而线程 B 需要调用这个实例对象所属类的静态 synchronized 方法，是允许的，不会发生互斥现象，**因为访问静态 synchronized 方法占用的锁是当前类的锁，而访问非静态 synchronized 方法占用的锁是当前实例对象锁**。
+- **修饰静态方法:** 也就是给当前类加锁，会作用于类的所有对象实例。所以如果一个线程 A 调用一个实例对象的非静态 synchronized 方法，而线程 B 需要调用这个实例对象所属类的静态 synchronized 方法，不会发生互斥现象，**因为访问静态 synchronized 方法占用的锁是当前类的锁，而访问非静态 synchronized 方法占用的锁是当前实例对象锁**。
 
-- **修饰代码块:** 指定加锁对象，对给定对象加锁，进入同步代码库前要获得给定对象的锁。
+- **修饰代码块:** 锁是synchronized括号里配置的对象
 
   **总结：** synchronized 关键字加到 static 静态方法和 synchronized(class)代码块上都是是给 Class 类上锁。synchronized 关键字加到实例方法上是给对象实例上锁。尽量不要使用 synchronized(String a) 因为JVM中，字符串常量池具有缓存功能！
 
@@ -892,21 +873,36 @@ uniqueInstance 采用 volatile 关键字修饰也是很有必要的， uniqueIns
 
 自旋锁本身是有缺点的，它不能代替阻塞。自旋等待虽然避免了线程切换的开销，但它要占用处理器时间。如果锁被占用的时间很短，自旋等待的效果就会非常好。反之，如果锁被占用的时间很长，那么自旋的线程只会白浪费处理器资源。所以，自旋等待的时间必须要有一定的限度，如果自旋超过了限定次数（默认是10次，可以使用`-XX:PreBlockSpin`来更改）没有成功获得锁，就应当挂起线程。
 
-自适应意味着自旋的时间（次数）不再固定。某个线程如果自旋成功了，那么下次自旋的次数会更加多，因为虚拟机认为既然上次成功了，那么此次自旋也很有可能会再次成功，那么它就会允许自旋等待持续的次数更多。反之，如果对于某个锁，很少有自旋能够成功的，那么在以后要或者这个锁的时候自旋的次数会减少甚至省略掉自旋过程，以免浪费处理器资源。
-
-
+自适应意味着自旋的时间（次数）不再固定。某个线程如果自旋成功了，那么下次自旋的次数会更加多，因为虚拟机认为既然上次成功了，那么此次自旋也可能成功。反之，如果对于某个锁，很少有自旋能成功的，那么以后等待这个锁的时候自旋的次数会减少甚至不自旋。 
 
 **锁消除**
 
 锁消除是指虚拟机即时编译器再运行时，对一些代码上要求同步，但是被检测到不可能存在共享数据竞争的锁进行消除。
 
-比如，StringBuffer类的append方法用了synchronized关键词，它是线程安全的。但我们可能仅在方法内部把StringBuffer当作局部变量使用。不同线程同时调用createStringBuffer()方法时，都会创建不同的StringBuffer对象，而此时的append操作若是使用synchronized加锁，就是白白浪费的系统资源。
+```java
+@Override
+public synchronized StringBuffer append(String str) {
+    toStringCache = null;
+    super.append(str);
+    return this;
+}
+
+public static String createStringBuffer(String str1, String str2) {
+    StringBuffer sBuf = new StringBuffer();
+    sBuf.append(str1);// append方法是同步操作
+    sBuf.append(str2);
+    return sBuf.toString();
+}
+
+```
+
+比如，StringBuffer类的append方法用了synchronized关键词，它是线程安全的。但当StringBuffer作为局部变量时，不同线程有不同的StringBuffer实例，不会发生数据竞争，此时的append操作若是使用synchronized加锁，就是白白浪费的系统资源。
 
  
 
 **锁粗化**
 
-代码中前后相邻的synchronized块的是同一锁对象,那么这几个synchronized块会被合并成一个较大的同步块, 这样做的好处在于线程在执行代码时就无需频繁申请写释放锁了,从而达到申请与释放锁一次,就可以执行完全部的同步代码块,从而提升了性能
+代码中前后相邻的synchronized块的是同一锁对象,那么这几个synchronized块会被合并成一个较大的同步块, 就无需频繁申请与释放锁了,从而提升了性能。
 
 ```dart
     public String cancatString(String s1, String s2, String s3){
@@ -961,7 +957,7 @@ synchronized 修饰的方法并没有 monitorenter 指令和 monitorexit 指令�
 | 类别     | synchronized                                                 | lock                                                         |
 | -------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | 存在层次 | java的关键字，在jvm层面上                                    | 是一个API/类/接口                                            |
-| 锁的释放 | 1、以获取锁的线程执行完同步代码，释放锁2、线程执行发生异常，jvm会让线程释放锁 | 在finally中必须释放锁，不然容易造成线程死锁                  |
+| 锁的释放 | 1、以获取锁的线程执行完同步代码，释放锁  2、线程执行发生异常，jvm会让线程释放锁 | 在finally中必须释放锁，不然容易造成线程死锁                  |
 | 锁的获取 | 假设A线程获得锁，B线程等待，如果A线程阻塞，B线程会一直等待   | 分情况而定，lock有多个锁获取的方法，可以尝试获得锁(tryLock)，线程可以不用一直等待 |
 | 锁状态   | 无法判断                                                     | 可以判断                                                     |
 | 锁类型   | 可重入   不可中断   非公平                                   | 可重入 可中断(lockInterruptibly)   可公平                    |
@@ -969,21 +965,25 @@ synchronized 修饰的方法并没有 monitorenter 指令和 monitorexit 指令�
 
 ## ThreadLocal
 
-ThreadLocal主要用来存储当前线程上下文的变量信息，它可以保障存储进去的数据，只能被当前线程读取到，并且线程之间不会相互影响。ThreadLocal为变量在每个线程中都创建了一个副本，那么每个线程可以访问自己内部的副本变量。 
+ThreadLocal 适用于多线程下变量不需要共享的情况，保证存储进去的数据，只能被当前线程读取到，并且线程之间不会相互影响。ThreadLocal为变量在每个线程中都创建了一个副本，那么每个线程可以访问自己内部的副本变量。 
+
+**所谓ThreadLocal，简单一点想，就是一个全局的Map，Map的key是线程对象，value是你要保存的对象**
 
 ​	ThreadLocal有哪些典型的应用场景： 
 
-​	1.数据库事务。通过AOP的方式，对执行数据库事务的函数进行拦截。函数开始前，获取connection开启事务并存储在ThreadLocal中，任何用到connection的地方，从ThreadLocal中获取，函数执行完毕后，提交事务释放connection。 
+​	1.数据库事务。事务是和线程绑定起来的，Spring中通过AOP的方式，在事务开始时会给当前线程绑定一个Jdbc Connection,在整个事务过程都是使用该线程绑定的connection来执行数据库操作，实现了事务的隔离性。
 
-​	2.web项目中，用户的登录信息通常保存在session中。做一个拦截器，把用户信息放在ThreadLocal中，在任何用到用户信息的时候，只需要从TreadLocal中读取就可以了。
+​	2.web项目中，用户的登录信息通常保存在session中。做一个拦截器，把session放在ThreadLocal中，在任何用到用户信息的时候，只需要从TreadLocal中读取就可以了。
 
 ### 原理	
 
-每个线程内部都有一个名为threadLocals 的成员变量，该变量类型为ThreadLocalMap （定制化的HashMap），具有get（），set（）方法，key为ThreadLocal 对象的this引用，value为set中设置的值。虽然threadLocals 并非八大基本类型，但仍存放在线程中（栈），而非ThreadLocal 对象中（堆）。set中设置的值是放在了当前线程的 threadLocals 中，并不是存在 `ThreadLocal` 上，`ThreadLocal` 可以理解为只是`ThreadLocalMap`的封装，传递了变量值。
+![img](Java容器及并发.assets/bd315c6034a85edf2121027dcd5cad25dc5475ca.jpeg)
+
+每个线程内部都有一个名为threadLocals 类型为ThreadLocalMap （定制化的HashMap）的成员变量，该成员变量的key为ThreadLocal 对象的this引用，value为set中设置的值。ThreadLocal 可以看做一个工具类，通过set方法把value值传递给线程的threadLocals 并保存。
 
 ### ThreadLocal 内存泄露问题
 
-`ThreadLocalMap` 中使用的 key 为 `ThreadLocal` 的弱引用,而 value 是强引用。所以，如果 `ThreadLocal` 没有被外部强引用的情况下，在垃圾回收的时候，key 会被清理掉，而 value 不会被清理掉。这样一来，`ThreadLocalMap` 中就会出现key为null的Entry。假如我们不做任何措施的话，value 永远无法被GC 回收，这个时候就可能会产生内存泄露。ThreadLocalMap实现中已经考虑了这种情况，在调用 `set()`、`get()`、`remove()` 方法的时候，会清理掉 key 为 null 的记录。==使用完 `ThreadLocal`方法后 最好手动调用`remove()`方法==
+`ThreadLocalMap` 中使用的 key 为 `ThreadLocal` 的弱引用,而 value 是强引用。所以，如果 `ThreadLocal` 没有被外部强引用的情况下，在垃圾回收的时候，key 会被清理掉，而 value 不会被清理掉。这样一来，`ThreadLocalMap` 中就会出现key为null的Entry。假如我们不做任何措施的话，value 永远无法被GC 回收，线程迟迟不结束的话就可能会产生内存泄露。ThreadLocalMap实现中已经考虑了这种情况，在调用 `set()`、`get()`、`remove()` 方法的时候，会清理掉 key 为 null 的记录。==使用完 `ThreadLocal`方法后 最好手动调用`remove()`方法==
 
 ## Atomic 与 CAS
 
@@ -1040,11 +1040,54 @@ public class test {
 
 ### Atomic 原子类
 
+原子类都存放在`java.util.concurrent.atomic`下
+
+下面以AtomicInteger为例
+
+```java
+public class AtomicInteger extends Number implements java.io.Serializable {
+    private static final long serialVersionUID = 6214790243416807050L;
+ 
+    private static final Unsafe unsafe = Unsafe.getUnsafe();
+    private static final long valueOffset;
+ 
+    static {
+        try {
+            //获取value在AtomicInteger中的偏移量
+            valueOffset = unsafe.objectFieldOffset
+                (AtomicInteger.class.getDeclaredField("value"));
+        } catch (Exception ex) { throw new Error(ex); }
+    }
+ 	//实际变量值value
+    private volatile int value;
+    
+
+    public final int incrementAndGet() {
+        return unsafe.getAndAddInt(this, valueOffset, 1) + 1;
+	}
+    
+    public final int getAndAddInt(Object obj, long valueOffset, int delta) {
+        int expect;
+        //自旋
+        do {
+            //获取主存的值
+            expect = this.getIntVolatile(obj, valueOffset);
+        //CAS操作
+        } while(!this.compareAndSwapInt(obj, valueOffset, expect, expect + delta));
+ 
+        //返回旧值
+        return expect;
+    }
+}
+```
+
+
+
 ## 锁与同步器
 
 ### AQS原理
 
-AQS全称为AbstractQueuedSynchronizer,即抽象同步队列。
+AQS全称为AbstractQueuedSynchronizer,即抽象同步队列。设计模式：**模板模式**
 
 AQS是实现同步器的基础组件，并发包中各种锁也是由AQS所实现
 
@@ -1056,9 +1099,203 @@ AQS有一个内部类ConditonObject，具有await() signal() signalAll() 3个方
 
 ![AQS](Java容器及并发.assets/AQS.jpg)
 
-### ReentrantLock和synchronized的区别
+AQS方法不带踹的是自己实现的，带踹的是子类自己实现的
 
-### ReentrantReadWriteLock 读写锁
+
+
+
+
+源码解析 **[https://www.jianshu.com/p/282bdb57e343]**
+
+以下源码结合ReentrantLock看
+
+加锁时：
+
+lock---acquire---tryAcquire
+
+​							失败后---acquire --------------- ←
+
+解锁时：                                                               ↑
+
+unlock---release---tryRelease---release() -------
+
+一句话总结： 线程抢锁失败就被放到队列里，当锁被释放则通知队列中下一个节点去抢锁
+
+#### acquire()
+
+```java
+public final void acquire(int arg) {
+    if (!tryAcquire(arg) && //tryAcquire失败 
+        acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+        selfInterrupt();
+}
+```
+
+**addWaiter(Node mode)**：
+
+将当前线程封装为Node.EXCLUSIVE的Node节点并插入到AQS阻塞队列尾部
+
+**acquireQueued(final Node node, int arg)**
+
+```java
+for(;;){
+
+若node的前节点是head，进行tryAcquire(arg)，成功后将其在队列中移除
+
+否则进入等待状态，线程被中断或者**前驱节点被释放时**再循环到上一步
+
+}
+```
+
+#### release()
+
+```java
+public final boolean release(int arg) {
+    if (tryRelease(arg)) {
+        Node h = head;
+        //若头结点有效则唤醒head的下一个节点
+        if (h != null && h.waitStatus != 0)
+            unparkSuccessor(h);
+        return true;
+    }
+    return false;
+}
+```
+
+鱿鱼tryRelease运行后 锁就可以被争夺。unparkSuccessor唤醒下一个节点后，acquireQueued循环得以运行，唤醒线程A进行tryAcquire(arg)判断，若在这之前有个线程B冲进来tryAcquire(arg)
+
+对于非公平锁 线程B冲进来tryAcquire(arg)拿走了锁，则线程A tryAcquire(arg)还是会失败，体现了非公平。
+
+对于公平锁 这个冲进来的线程B tryAcquire(arg)时，发现前面有人排队，就自觉的排队，按排队顺序获取锁，就很公平。![img](Java容器及并发.assets/06BD68A6.png)
+
+### ReentrantLock
+
+#### lock()
+
+```java
+final void lock() {
+    //CAS设置AQS中的state
+    if (compareAndSetState(0, 1))
+        setExclusiveOwnerThread(Thread.currentThread());
+    else
+        //若CAS失败 
+        acquire(1);
+}
+```
+
+**tryLock()**
+
+```java
+public boolean tryLock() {
+    return nonfairTryAcquire(1);
+}
+```
+
+**该方法不会引起阻塞**
+
+没拿到锁时 线程不会被阻塞 非拿到锁不可，直接就返回false
+
+因为根本没考虑获取锁失败后把当前线程放入队列中 
+
+对比 lock() 获取锁失败后调用 acquire() ,tryAcquire()失败后会把线程变成node扔到队列里
+
+#### tryAcquire()
+
+```java
+protected final boolean tryAcquire(int acquires) {
+    //默认非公平锁
+    return nonfairTryAcquire(acquires);
+}
+```
+
+**非公平锁实现**
+
+```java
+final boolean nonfairTryAcquire(int acquires) {
+    final Thread current = Thread.currentThread();
+    int c = getState();
+    //当前State为0 即锁空闲 CAS获取锁
+    if (c == 0) {
+        if (compareAndSetState(0, acquires)) {
+            setExclusiveOwnerThread(current);
+            return true;
+        }
+    }
+    //当前线程是锁的持有者，State重入次数+1
+    else if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires;
+        if (nextc < 0) // overflow
+            throw new Error("Maximum lock count exceeded");
+        setState(nextc);
+        return true;
+    }
+    //表示没有尝试成功获取当前锁 返回acquire()
+    return false;
+}
+```
+
+**公平锁实现**
+
+```java
+protected final boolean tryAcquire(int acquires) {
+    final Thread current = Thread.currentThread();
+    int c = getState();
+    if (c == 0) {
+        //区别在于通过hasQueuedPredecessors()判断若阻塞队列有其他元素
+        //即前面有人排队 则返回true 跳出判断
+        if (!hasQueuedPredecessors() &&
+            compareAndSetState(0, acquires)) {
+            setExclusiveOwnerThread(current);
+            return true;
+        }
+    }
+    //同非公平锁
+    else if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires;
+        if (nextc < 0)
+            throw new Error("Maximum lock count exceeded");
+        setState(nextc);
+        return true;
+    }
+    return false;
+}
+```
+
+#### unlock()
+
+```java
+public void unlock() {
+    sync.release(1);
+}
+```
+
+#### tryRelease()
+
+```java
+protected final boolean try tryRelease(int releases) {
+    int c = getState() - releases;
+    if (Thread.currentThread() != getExclusiveOwnerThread())
+        throw new IllegalMonitorStateException();
+    boolean free = false;
+    //若State为0 则Release后锁空闲 free代表锁状态
+    if (c == 0) {
+        free = true;
+        setExclusiveOwnerThread(null);
+    }
+    setState(c);
+    return free;
+}
+```
+
+
+
+
+
+
+
+#### ReentrantLock和synchronized的区别
+
+### ReentrantReadWriteLock 
 
 读写锁在ReentrantLock上进行了拓展使得该锁更适合读操作远远大于写操作对场景。
 
@@ -1080,13 +1317,51 @@ AQS中维护了一个state状态，读锁用高16位，表示持有读锁的线�
 
    
 
+### 使用
+
+```java
+public class ThreadTest {
+ 
+    ExecutorService fixedThreadPool = Executors.newFixedThreadPool(50);
+   
+    public void dothing(){
+        for(int i=0;i<50;i++){
+            fixedThreadPool.execute(new Runnable() {
+                @Override
+                public void run() {
+                    //do something
+                }
+            });
+        }
+        fixedThreadPool.shutdown();//关闭线程池
+    }
+}
+```
+
+
+
 ### 工作流程
 
-![clip_image002](https://images2015.cnblogs.com/blog/834468/201602/834468-20160201155805225-1324751929.png)
+**[https://www.cnblogs.com/qingquanzi/p/8146638.html]**
 
-线程池的工作模型主要两部分组成，一部分是运行Runnable的Thread对象，另一部分就是阻塞队列。
+![img](Java容器及并发.assets/1287675-20171229231231929-1280812291.png)
 
-由线程池创建的Thread对象其内部的run方法会通过阻塞队列的take方法获取一个Runnable对象，然后执行这个Runnable对象的run方法（即，在Thread的run方法中调用Runnable对象的run方法）。当Runnable对象的run方法执行完毕以后，Thread中的run方法又循环的从阻塞队列中获取下一个Runnable对象继续执行。这样就实现了Thread对象的重复利用，也就减少了创建线程和销毁线程所消耗的资源。
+> 1、如果正在运行的线程数量小于 corePoolSize，那么马上创建线程运行这个任务
+>
+> 2、如果正在运行的线程数量大于或等于 corePoolSize，那么将这个任务放入队列
+>
+> 3、如果这时候队列满了，而且正在运行的线程数量小于 maximumPoolSize，那么还是要创建非核心线程立刻运行这个任务
+>
+> 4、如果队列满了，而且正在运行的线程数量大于或等于 maximumPoolSize，那么线程池会抛出异常RejectExecutionException
+
+线程池中线程执行分为2种情况
+
+1. 在execute（）方法创建一个线程时，让这个线程立即执行当前任务
+2. 线程数量>=corePoolSize且任务队列未满，将任务放入队列
+
+![img](Java容器及并发.assets/1287675-20171229231758929-977183448.png)
+
+当线程被创建后，通过while循环调用getTask方法从workerQueue里读取任务，然后执行任务。只要getTask方法不返回null,此线程就不会退出。
 
 ### 几种常见的线程池及使用场景
 
@@ -1104,26 +1379,24 @@ AQS中维护了一个state状态，读锁用高16位，表示持有读锁的线�
 
 **可能产生的问题：**
 
-1）newFixedThreadPool和newSingleThreadExecutor:
-  主要问题是堆积的请求处理队列可能会耗费非常大的内存，甚至OOM。
-2）newCachedThreadPool和newScheduledThreadPool:
-  主要问题是线程数最大数是Integer.MAX_VALUE，可能会创建数量非常多的线程，甚至OOM。
+1. newFixedThreadPool和newSingleThreadExecutor:
+   主要问题是堆积的请求处理队列可能会耗费非常大的内存，甚至OOM。
+2. newCachedThreadPoolnewScheduledThreadPool:
+   主要问题是线程数最大数是Integer.MAX_VALUE，可能会创建数量非常多的线程，甚至OOM。
 
 ### 线程池的常见参数
 
-（1）corePoolSize：线程池中常驻核心线程数如，果运行的线程等于或多于corePoolSize，则将任务加入BlockingQueue，如果无法将任务加入BlockingQueue（队列已满），则创建新的线程来处理任务。
+1. corePoolSize：线程池中常驻核心线程数如，如果运行的线程等于或多于corePoolSize，则将任务加入BlockingQueue，如果无法将任务加入BlockingQueue（队列已满），则创建新的线程来处理任务。
 
-（2）maximumPoolSize：线程池能够容纳同时执行的最大线程数，此值必须大于等于1
+2. maximumPoolSize：线程池能够容纳同时执行的最大线程数，此值必须大于等于1
 
-（3）keepAliveTime：多余的空闲线程存活时间。若当前线程池中的线程数量比核心线程数量多，并且是闲置状态，则这些闲置的线程所能存活的最大时间。
+3. keepAliveTime：多余的空闲线程存活时间。若当前线程池中的线程数量比核心线程数量多，并且是闲置状态，则这些闲置的线程所能存活的最大时间。                            
 
-（4）TimeUnit：keepAliveTime的时间单位
+4. workQueue：用于保存等待执行的任务的阻塞队列
 
-（5）workQueue：用于保存等待执行的任务的阻塞队列
+5. threadFactory：表示生成线程池中的工作线程的线程工厂，用于创建线程，一般为默认线程工厂即可
 
-（6）threadFactory：表示生成线程池中的工作线程的线程工厂，用于创建线程，一般为默认线程工厂即可
-
-（7）handler：拒绝策略，表示当队列满了并且工作线程大于等于线程池的最大线程数（maximumPoolSize）时采取的策略，如抛弃异常、摸摸丢弃
+6. rejectedHandler：拒绝策略，表示当队列满了并且工作线程大于等于线程池的最大线程数时采取的策略，如抛出异常、摸摸丢弃
 
 
 
