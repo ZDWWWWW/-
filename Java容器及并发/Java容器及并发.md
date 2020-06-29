@@ -522,7 +522,7 @@ private void linkNodeLast(LinkedHashMap.Entry<K,V> p) {
 }
 ```
 
-![img](https://images2015.cnblogs.com/blog/249993/201612/249993-20161215143120620-1544337380.png)
+![img](Java容器及并发.assets/mvMqH0QsPRPHvyXb__thumbnail)
 
 ### ConcurrentHashMap 
 
@@ -665,7 +665,7 @@ notifyAll()：唤醒在此对象锁上等待的所有线程，**等线程结束�
 
 ==join(),sleep(),yield()==
 
-join(): 把指定的线程添加到当前线程中，主线程等待join线程结束后再执行。
+join(): 把指定的线程添加到当前线程中，当前线程等待join线程结束后再执行。
 
 sleep():让出cpu给其他线程, 在一定时间内不参与cpu调度，**不释放锁**。
 
@@ -697,19 +697,20 @@ yield(): 让出cpu给其他线程, 并处于就绪状态。
 
 1. 互斥条件：某种资源一次只允许一个进程访问，即该资源一旦分配给某个进程，其他进程就不能再访问，直到该进程访问结束。
 
-2. 请求和保持条件：当进程因请求资源而阻塞时，对已获得的资源保持不放。
+2. 占有并等待：进程占有资源，并等待被其他进程所占有的资源。
 
-3. 不剥夺条件：进程已获得的资源在未使用完之前，不能剥夺，只能在使用完时由自己释放。
+3. 非抢占：进程已获得的资源在未使用完之前，不能被抢占，只能在使用完时由自己释放。
 
-4. 环路等待条件：在发生死锁时，必然存在一个进程--资源的环形链。
+4. 循环等待：有一组等待进程 {P1，P2，P3}，P1 等待的资源为 P2 占有，P2 等待的资源为 P3 占有，P3 等待的资源为 P1 占有。
 
    
 
 **避免死锁**只要破坏产生死锁的四个条件中的其中一个
 
-1. 资源一次性分配：一次性分配所有资源，这样就不会再有请求了：（破坏请求条件）
-2. 可剥夺资源：即当某进程获得了部分资源，但得不到其它资源，则释放已占有的资源（破坏不可剥夺条件）
-3. 资源有序分配法：系统给每类资源赋予一个编号，每一个进程按编号递增的顺序请求资源，释放则相反（破坏环路等待条件）
+1. 资源能共享使用
+2. 进程在运行前一次申请完它所需要的全部资源
+3. 资源可以被抢占
+4. 
 
 ### 实现多线程的方法
 
@@ -787,7 +788,7 @@ public interface Runnable {
 
 成员变量、静态变量、类信息均会被存储在主内存中；（堆）
 
-![img](Java容器及并发.assets/4222138-96ca2a788ec29dc2.webp)
+![img](Java容器及并发.assets/4222138-96ca2a788ec29dc2.png)
 
  Java内存模型是围绕着并发编程中**原子性**、**可见性**、**有序性**这三个特征来建立的
 
@@ -825,7 +826,7 @@ happen-before的传递性原则：如果A操作 happen-before B操作，B操作h
 
   **总结：** synchronized 关键字加到 static 静态方法和 synchronized(class)代码块上都是是给 Class 类上锁。synchronized 关键字加到实例方法上是给对象实例上锁。尽量不要使用 synchronized(String a) 因为JVM中，字符串常量池具有缓存功能！
 
-**线程安全的单例模式（双重检查锁方式）**
+**线程安全的单例模式（双重检查锁DLC方式）**
 
 ```java
 public class Singleton {
@@ -1095,9 +1096,15 @@ AQS是一个FIFO的**双向队列**，队列中元素的类型为Node，每个No
 
 AQS中维持了一个单一的状态信息state，**线程同步的关键是通过CAS对状态值state的操作**。对于不同的锁和同步器，state的含义不同。对ReentrantLock的实现，state表示可重入次数。
 
-AQS有一个内部类ConditonObject，具有await() signal() signalAll() 3个方法，类似于wait(), notify()和notifyAll() 方法。**一个Lock对象可以创建多个ConditonObject对象，在每个ConditonObject对象中维护一个Node队列**，用来存放被await()方法阻塞的线程。
+AQS有一个内部类ConditonObject，具有await() signal() signalAll() 3个方法，类似于wait(), notify()和notifyAll() 方法，只有获取到锁的线程才配使用ConditonObject中方法。**一个Lock对象可以创建多个ConditonObject对象，在每个ConditonObject对象中维护一个Node队列**，用来存放被await()方法阻塞的线程。
+
+流程是获取到锁的线程A调用ConditonObject对象的await()方法，则该线程会释放锁，并转换为Node节点插入到ConditonObject对象的条件队列中。此时线程B获取到锁，调用ConditonObject对象的signal()/signalAll()方法，将条件队列里一个/全部节点移动到AQS队列中。
 
 ![AQS](Java容器及并发.assets/AQS.jpg)
+
+
+
+
 
 AQS方法不带踹的是自己实现的，带踹的是子类自己实现的
 
@@ -1289,12 +1296,6 @@ protected final boolean try tryRelease(int releases) {
 
 
 
-
-
-
-
-#### ReentrantLock和synchronized的区别
-
 ### ReentrantReadWriteLock 
 
 读写锁在ReentrantLock上进行了拓展使得该锁更适合读操作远远大于写操作对场景。
@@ -1303,9 +1304,85 @@ AQS中维护了一个state状态，读锁用高16位，表示持有读锁的线�
 
 ![img](Java容器及并发.assets/1.png)
 
-#### 读写锁的实现
 
-## 线程池
+
+### CountDownLatch
+
+**一个线程等待其他线程各自执行完毕后再执行。**
+
+创建一个CountDownLatch对象并传入一个计数值count，当线程调用CountDownLatch.await()方法则进入AQS阻塞队列；当其他线程调用CountDownLatch.countDown()方法，计数值count-1；当count=0时，进入AQS阻塞队列里被阻塞的线程全部被释放，被阻塞的线程得以继续执行。
+
+#### 构造函数
+
+```java
+public CountDownLatch(int count) {
+    if (count < 0) throw new IllegalArgumentException("count < 0");
+    this.sync = new Sync(count);
+}
+Sync(int count) {
+	//通过state表示计数器值
+    setState(count);
+}
+```
+
+#### await()
+
+```java
+public void await() throws InterruptedException {
+    sync.acquireSharedInterruptibly(1);
+}
+```
+
+```java
+public final void acquireSharedInterruptibly(int arg)
+        throws InterruptedException {
+    //可被中断
+    if (Thread.interrupted())
+        throw new InterruptedException();
+    //若state=0 则返回1大于0 直接返回  state!=0 返回-1小于0 将当前线程阻塞
+    if (tryAcquireShared(arg) < 0)
+        doAcquireSharedInterruptibly(arg);
+}
+```
+
+**tryAcquireShared(int acquires)**
+
+```java
+protected int tryAcquireShared(int acquires) {
+     //若state=0 则返回1大于0 直接返回  state!=0 返回-1小于0 将当前线程阻塞
+            return (getState() == 0) ? 1 : -1;
+        }
+```
+
+**doAcquireSharedInterruptibly(int arg)**
+
+将当前线程转为Node节点，加入AQS队列
+
+#### countDown()
+
+调用方法 state的值**递减** ，递减到0时 则将阻塞在AQS队列中的线程**全部唤醒**（因为是共享锁）
+
+
+
+### CyclicBarrier 
+
+**当所有线程到达屏障点后才能一块继续向下执行。**
+
+创建一个CyclicBarrier 对象并传入一个计数值count。当线程调用await()方法，count-1，若减1后 count!=0 则当前线程被阻塞，若 count=0 则唤醒所有被阻塞的线程。
+
+突破屏障后，重置成员变量为初始count，**CyclicBarrier可以复用**
+
+### Semaphore
+
+https://www.cnblogs.com/QullLee/p/12247743.html
+
+创建一个Semaphore对象并传入一个初始值count。线程调用acquire(n)，判断count和n大小，若count<n说明现有的信号量不满足要求，将当前线程阻塞加入AQS队列。其他线程调用release()释放信号量，count+1 并唤醒AQS等待的**第一个**线程。被唤醒的线程据需判断count和n大小，count>=n时从阻塞队列中释放。
+
+**支持公平/非公平 两种模式**
+
+可用于**流量控制/资源限制**
+
+## 线程池 
 
 ### 优点
 
@@ -1387,16 +1464,15 @@ public class ThreadTest {
 ### 线程池的常见参数
 
 1. corePoolSize：线程池中常驻核心线程数如，如果运行的线程等于或多于corePoolSize，则将任务加入BlockingQueue，如果无法将任务加入BlockingQueue（队列已满），则创建新的线程来处理任务。
-
 2. maximumPoolSize：线程池能够容纳同时执行的最大线程数，此值必须大于等于1
-
 3. keepAliveTime：多余的空闲线程存活时间。若当前线程池中的线程数量比核心线程数量多，并且是闲置状态，则这些闲置的线程所能存活的最大时间。                            
-
 4. workQueue：用于保存等待执行的任务的阻塞队列
-
 5. threadFactory：表示生成线程池中的工作线程的线程工厂，用于创建线程，一般为默认线程工厂即可
-
-6. rejectedHandler：拒绝策略，表示当队列满了并且工作线程大于等于线程池的最大线程数时采取的策略，如抛出异常、摸摸丢弃
+6. rejectedHandler：拒绝策略，表示当队列满了并且工作线程大于等于线程池的最大线程数时采取的策略，如
+   * 丢弃任务抛出异常、丢弃任务不抛异常
+   * 丢弃最前面的任务，尝试重新执行
+   * 丢弃队列最前面的任务，然后重新提交被拒绝的任务
+   * 调用提交任务的线程直接执行此任务，
 
 
 
