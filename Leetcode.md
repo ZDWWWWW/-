@@ -596,7 +596,11 @@ set.size()
 set.isEmpty()
 ```
 
+## Collections
 
+```java
+Collections.reverse(List<?> list)//需要参数为list 数组要想使用需要 Arrays.asList()
+```
 
 
 
@@ -662,7 +666,7 @@ s.contains("g")//判断字符串中是否包含指定字符。
 s.toLowerCase()//转小写
 s.trim()//用于删除字符串的头尾空白符
 s.substring(int beginIndex, int endIndex)//返回截取的新字符串，左闭右开
-char[] chars = s.toCharArray();
+char[] chars = s.toCharArray();//将字符串转换为字符数组
 
 StringBuilder sb = new StringBuilder();
 sb.append(String str)/sb.append(StringBuilder sb)/sb.append(Char c)````//append一切
