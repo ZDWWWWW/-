@@ -7,9 +7,9 @@
 
 ## JVM、 JDK 和 JRE 
 
-JRE 是 Java 运行时环境。它是运行已编译 Java 程序所需的所有内容的集合，**包括 Java 虚拟机**（JVM），Java 类库，java 命令和其他的一些基础构件。但是，它**不能用于创建新程序**。
+JRE(Java Runtime Environment) 是 Java 运行时环境。它是运行已编译 Java 程序所需的所有内容的集合，**包括 Java 虚拟机**（JVM），Java 类库，java 命令和其他的一些基础构件。但是，它**不能用于创建新程序**。
 
-JDK 是 Java Development Kit，它是功能齐全的 Java SDK。它拥有 JRE 所拥有的一切。**能够创建和编译程序**。
+JDK(Java Development Kit)，它是功能齐全的 Java SDK。它拥有 JRE 所拥有的一切。**能够创建和编译程序**。
 
 ## 重载和重写的区别
 
@@ -76,7 +76,7 @@ StringBuilder 并没有对方法进行加同步锁，所以是非线程安全的
 
 **性能**
 
-StringBuffer >StringBuilder >String 
+StringBuilder >StringBuffer >String 
 
 ## 自动装箱与自动拆箱
 
@@ -266,6 +266,8 @@ hashCode()相等的两对象，equals()不一定相等
 
 **重写equals()时，必须重写hashCode()**
 
+确保equals()为true，hashcode()也为true
+
 equals()默认比较内存地址，hashCode()默认计算内存地址（存疑，见具体实现）
 
 equals()重写后仅要求内容上的相等，内存地址可以不同
@@ -273,6 +275,11 @@ equals()重写后仅要求内容上的相等，内存地址可以不同
 若不重写hashCode()，造成equals()为true，hashCode()为false的情况
 
 ## Java中只有值传递
+
+如果参数是基本类型，传递的是基本类型的字面量值的拷贝。
+如果参数是引用类型，传递的是该参量所引用的对象在堆中地址值的拷贝。
+
+
 
 有些看起来很像传递引用，但实则是传递值
 
@@ -309,25 +316,21 @@ but p和person是两个东西  依然是传递值
 
 ## 深拷贝与浅拷贝
 
-深拷贝和浅拷贝最根本的区别在于是否真正获取一个对象的复制实体，而不是引用。
+**浅拷贝**：创建一个新对象，如果对象是基本数据类型的，直接将属性值赋值给新的对象，其中一个对象修改该值，不会影响另外一个；如果对象是引用类型的话，则复制引用但不复制引用的对象。因此，原始对象及其副本引用同一个对象。
 
-假设B复制了A，修改A的时候，看B是否发生变化：
-
-如果B跟着**也变了**，说明是浅拷贝，拿人手短！只是增加了一个指针指向已存在的内存地址，AB引用指向堆中同一位置
-
-如果B**没有改变**，说明是深拷贝，自食其力！增加指针的同时，在堆上开辟了新的空间，AB引用指向不同位置
+**深拷贝**：创建一个新对象，无论对象是基本数据类型的还是引用类型，开辟新的内存空间赋值。当你修改其中一个对象的任何内容时，都不会影响另一个对象的内容。
 
 ## 动态绑定与静态绑定
 
 在java中，绑定分为静态绑定和动态绑定。也叫作前期绑定和后期绑定。
 
-动态绑定：在执行期间（非编译期）判断所引用对象的实际类型，根据其实际的类型调用其相应的方法。
+动态绑定：在执行期间判断所引用对象的实际类型，根据其实际的类型调用其相应的方法。
 
-静态绑定：在程序执行以前（编译期）已经被绑定（即在编译过程中就已经知道这个方法到底是哪个类中的方法）
+静态绑定：在程序执行以前已经被绑定（即在编译过程中就已经知道这个方法到底是哪个类中的方法）
 
 
 
-java当中的方法只有final、static、private修饰的的方法和构造方法是静态绑定的。
+java当中的**方法**只有final、static、private修饰的的方法和构造方法是静态绑定的。
 
 private修饰的方法：private修饰的方法是不能被继承的，因此子类无法访问父类中private修饰的方法。
 
@@ -414,13 +417,33 @@ server新建一个socket对象，使用accept()方法，接收client的连接请
 
 server新建一个serversocketChannel对象，并设置其为非阻塞，此时server的accept()和read()是**非阻塞方法**，程序while循环accept()，有人连接就将Channel连接放到容器中，for循环（轮询）容器中的Channel是否有read到数据，继续while循环accept()。无人连接则for循环（轮询）容器中的Channel是否有read到数据，继续while循环accept()。
 
+```java
+while(true){
+	socketChannel = accept();
+    if(socketChannel==null){
+        for(socketChannel channel:list){
+            channel.read();
+        }
+    }else{
+        list.add(socketChannel);
+        for(socketChannel channel:list){
+            channel.read();
+        }        
+    }
+}
+```
+
+同步是指代码流程依然是线性的串行的 先accept 后read，如果read到东西还是要立即对read返回值进行处理。
+
+非阻塞是指 read() accept() 方法不会读不到东西就卡住了，浅尝辄止，读不到就下一个。
+
+
+
+
+
 **IO多路复用(事件驱动)**
 
 IO多路复用即 很多client（多路），共用（复用）几个甚至一个server
-
-select  poll  epoll
-
-其实上面NIO的描述就是采用的select方法，对大量的连接进行遍历，浪费时间
 
 (1)select==>时间复杂度O(n)
 
@@ -434,47 +457,30 @@ poll本质上和select没有区别，它将用户传入的数组拷贝到内核�
 
 **epoll可以理解为event poll**，不同于忙轮询和无差别轮询，epoll会把哪个流发生了怎样的I/O事件通知我们。所以我们说epoll实际上是**事件驱动（每个事件关联上fd）**的，此时我们对这些流的操作都是有意义的。**（复杂度降低到了O(1)）**
 
-select，poll，epoll都是IO多路复用的机制。I/O多路复用就通过一种机制，可以监视多个描述符，一旦某个描述符就绪（一般是读就绪或者写就绪），能够通知程序进行相应的读写操作。**但select，poll，epoll本质上都是同步I/O，因为他们都需要在读写事件就绪后自己负责进行读写，也就是说这个读写过程是阻塞的**，而异步I/O则无需自己负责进行读写，异步I/O的实现会负责把数据从内核拷贝到用户空间。 
+~~select，poll，epoll都是IO多路复用的机制。I/O多路复用就通过一种机制，可以监视多个描述符，一旦某个描述符就绪（一般是读就绪或者写就绪），能够通知程序进行相应的读写操作。**但select，poll，epoll本质上都是同步I/O，因为他们都需要在读写事件就绪后自己负责进行读写，也就是说这个读写过程是阻塞的**，而异步I/O则无需自己负责进行读写，异步I/O的实现会负责把数据从内核拷贝到用户空间。~~ 
+
+
 
 
 
 ## 反射
 
+程序运行前，我们通过代码中new一个对象，将类加载进JVM中。
+
+程序运行中，突然用到某个未加载进JVM的类，通过反射动态的加载进JVM。
+
 一般情况下我们使用反射获取一个对象的步骤：
 
-- 获取类的 Class 对象实例
+```java
+//获取类
+Class clz = Class.forName("com.zhenai.api.Apple");//获取类的类对象实例
+Constructor appleConstructor = clz.getConstructor();//根据类对象实例获取 Constructor 对象
+Object appleObj = appleConstructor.newInstance();//使用 Constructor对象获取反射类对象
 
+//调用类的方法
+Method setPriceMethod = clz.getMethod("setPrice", int.class);//获取方法的 Method 对象
+setPriceMethod.invoke(appleObj, 14);//利用 invoke 方法调用方法
 ```
-Class clz = Class.forName("com.zhenai.api.Apple");
-```
-
-- 根据 Class 对象实例获取 Constructor 对象
-
-```
-Constructor appleConstructor = clz.getConstructor();
-```
-
-- 使用 Constructor 对象的 newInstance 方法获取反射类对象
-
-```
-Object appleObj = appleConstructor.newInstance();
-```
-
-而如果要调用某一个方法，则需要经过下面的步骤：
-
-- 获取方法的 Method 对象
-
-```
-Method setPriceMethod = clz.getMethod("setPrice", int.class);
-```
-
-- 利用 invoke 方法调用方法
-
-```
-setPriceMethod.invoke(appleObj, 14);
-```
-
-
 
 我们经常使用的 Spring 配置中，经常会有相关 Bean 的配置：
 
@@ -486,6 +492,63 @@ setPriceMethod.invoke(appleObj, 14);
 当我们在 XML 文件中配置了上面这段配置之后，Spring 便会在启动的时候利用反射去加载对应的 Apple 类。
 
 从这里可以看出，我们平常很多框架都使用了反射，容器是建立在反射上的。
+
+
+
+## 超线程
+
+**物理CPU：**插在主机上的真实的CPU硬件
+
+**逻辑CPU：**假如物理CPU不支持超线程的，那么逻辑CPU的数量等于核心数的数量；如果物理CPU支持超线程，那么逻辑CPU的数目是核心数数目的两倍。
+
+利用超线程技术，在一个物理CPU中模拟出的两个逻辑CPU，同一时刻一个物理CPU的资源可以由两个线程共享。
+
+即4核8线程的处理器，可以同时运行8个线程。
+
+但超线程并没有增加处理器的绝对性能，但是由于现实中绝大多数程序不能完全占满一个核心的所有资源，所以，通过多增加一个线程，让别的任务挤占进来，以充分利用核心的闲置资源。在大部分情况下，超线程能带来20%-30%的实际性能提升。
+
+## 异常和错误
+
+![img](Java基础及JVM.assets/2019101117003396.png)
+
+**异常和错误的区别**：异常能被程序本身可以处理，错误是JVM出现的问题 无法被程序本身处理。
+
+## JDBC
+
+```java
+package jdbc;
+ 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+ 
+public class TestJDBC {
+    public static void main(String[] args) {
+        try {
+            //1. 初始化驱动
+            Class.forName("com.mysql.jdbc.Driver");
+			//2. 建立连接
+            Connection c = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/how2java?characterEncoding=UTF-8", "root",
+                    "admin");
+ 			//3. 创建Statement运行对象
+            Statement s = c.createStatement();
+ 			//4. 执行SQL语句
+            ResultSet rs = s.executeQuery("SELECT age FROM imooc_goddess");
+            //5. 处理运行结果
+            while(rs.next()){
+                System.out.println( "年龄：" +rs.getInt("age"));
+             }            
+        } catch (SQLException e) {
+        } finally {
+            //6. 释放资源
+            ···
+        }
+    }
+}
+```
+
+
 
 # JVM
 
@@ -510,8 +573,8 @@ setPriceMethod.invoke(appleObj, 14);
 
 从上面的介绍中我们知道程序计数器主要有两个作用：
 
-1. 字节码解释器通过改变程序计数器来依次读取指令，从而实现代码的流程控制，如：顺序执行、选择、循环、异常处理。
-2. 在多线程的情况下，程序计数器用于记录当前线程执行的位置，从而当线程被切换回来的时候能够知道该线程上次运行到哪儿了。
+1. ==字节码解释器通过改变程序计数器来依次读取指令，从而实现代码的流程控制，如：顺序执行、选择、循环、异常处理==。
+2. ==在多线程的情况下，程序计数器用于记录当前线程执行的位置，从而当线程被切换回来的时候能够知道该线程上次运行到哪儿了。==
 
 **注意：程序计数器是唯一一个不会出现 OutOfMemoryError 的内存区域，它的生命周期随着线程的创建而创建，随着线程的结束而死亡。**
 
@@ -550,7 +613,7 @@ Java 虚拟机所管理的内存中最大的一块，Java 堆是所有线程共�
 
 **引用计数**：每个对象有一个引用计数属性，新增一个引用时计数加1，引用释放时计数减1，计数为0时可以回收。此方法简单，**无法解决对象相互循环引用**的问题。
 
-**可达性分析**（Reachability Analysis）：从GC Roots开始向下搜索，搜索所走过的路径称为引用链。当一个对象到GC Roots没有任何引用链相连时，则证明此对象是不可用的。不可达对象。
+**可达性分析**（Reachability Analysis）：从GC Roots开始向下搜索，搜索所走过的路径称为引用链。当一个对象到GC Roots没有任何引用链相连时，则证明此对象是不可用的。
 
 java中可作为GC Root的对象有：
 
@@ -561,7 +624,7 @@ java中可作为GC Root的对象有：
 
 ### 辣鸡收集算法
 
-  **标记-清除**（Mark-Sweep）算法，如它的名字一样，算法分为“标记”和“清除”两个阶段：首先标记出所有需要回收的对象，在标记完成后统一回收掉所有被标记的对象。之所以说它是最基础的收集算法，是因为后续的收集算法都是基于这种思路并对其缺点进行改进而得到的。
+  **标记-清除**（Mark-Sweep）算法，如它的名字一样，算法分为“标记”和“清除”两个阶段：首先标记出所有需要回收的对象，在标记完成后统一回收掉所有被标记的对象。
 
 它的主要缺点有两个：一个是效率问题，标记和清除过程的效率都不高；另外一个是空间问题，标记清除之后会产生大量不连续的内存碎片，**空间碎片太多**可能会导致，当程序在以后的运行过程中需要分配较大对象时无法找到足够的连续内存而不得不提前触发另一次垃圾收集动作。
 
@@ -570,8 +633,6 @@ java中可作为GC Root的对象有：
  
 
 **复制**（Copying）算法，它将可用内存按容量划分为两块，每次只使用其中的一块。当这一块的内存用完了，就将还存活着的对象复制到另外一块上面，然后再把已使用过的内存空间一次清理掉。
-
-这样使得每次都是对其中的一块进行内存回收，内存分配时也就不用考虑内存碎片等复杂情况，只要移动堆顶指针，按顺序分配内存即可，实现简单，运行高效。只是这种算法的代价持续复制长生存期的对象则导致效率降低。
 
 实践中会将新生代内存分为一块较大的Eden空间和两块较小的Survivor空间 ，每次使用Eden和其中一块Survivor。当回收时，将Eden和Survivor中还存活着的对象一次地复制到另外一块Survivor空间上，最后清理掉Eden和刚才用过的Survivor空间。**HotSpot虚拟机默认Eden和Survivor的大小比例是 8:1:1**，也就是每次新生代中可用内存空间为整个新生代容量的90% ( 80%+10% )，只有10% 的内存会被“浪费”。
 
@@ -589,7 +650,9 @@ java中可作为GC Root的对象有：
 
 新生代算法均为复制算法，老年代算法除了CMS均为标记整理算法。
 
-到jdk8为止，默认的垃圾收集器是Parallel Scavenge 和 Parallel Old 
+到jdk8为止，默认的垃圾收集器是Parallel Scavenge 和 Parallel Old  
+
+吞吐量：运行代码时间/运行代码时间+垃圾收集时间
 
 从jdk9开始，G1收集器成为默认的垃圾收集器
 
@@ -601,19 +664,21 @@ CMS收集器（Concurrent Mark Sweep）是基于“**标记-清除**”算法实
 
 **初始标记（CMS initial mark）**
 
-会Stop The World停止工作线程,标记GC Roots(局部变量和类的静态变量)引用的对象。初始标记仅仅只是标记一下GC Roots能直接关联到的对象，速度很快，
+==会Stop The World==,标记GC Roots(局部变量和类的静态变量)引用的对象。==初始标记仅仅只是标记一下GC Roots能直接关联到的对象，速度很快，==
 
 **并发标记（CMS concurrent mark）**
 
-并发进行，系统一边工作，一边进行垃圾回收，对系统的所有对象进行GC Root追踪，看有没有最终被GC Root的对象引用，这个过程很耗时。但是不影响系统的工作，系统工作期间会继续有对象进入老年代，这些对象有可能变成垃圾或被引用，在下一个阶段进行处理。
+==并发进行，系统一边工作，一边进行垃圾回收，对系统的所有对象进行GC Root追踪==，这个过程很耗时。但是不影响系统的工作，系统工作期间会继续有对象进入老年代，这些对象有可能变成垃圾或被引用，在下一个阶段进行处理。
 
 **重新标记（CMS remark）**
 
-会Stop The World，为了修正并发标记期间，因用户程序继续运作而导致标记产生变动的那一部分对象的标记记录。速度很快。
+==会Stop The World，为了修正并发标记期间，因用户程序继续运作而导致标记产生变动的那一部分对象的标记记录。速度很快。==
 
 **并发清除（CMS concurrent sweep）**
 
 这个阶段很耗时，和系统并发运行，不影响系统工作。清理掉被标记的垃圾对象，并进行对象移动整理，减少内存碎片。
+
+**缺点**：采用标记清除算法，会产生大量的内存碎片
 
 ## 类加载
 
@@ -727,6 +792,10 @@ JVM 中内置了三个重要的 ClassLoader，除了 BootstrapClassLoader 其他
 
 Java 在核心类库中定义了许多接口，并且还给出了针对这些接口的调用逻辑，然而并未给出实现。供应商要做的就是定制一个实现类，以供核心类库使用。这样JDK提供接口，供应商提供服务。开发人员编码时面向接口编程，然后JDK能够自动找到合适的实现。
 
+这样一个场景下，BootStrap类加载器需要加载具体的实现类，明显BootStrap类加载器工作路径下是找不到这些实现类的。需要我们在启动类加载器中有方法获取应用程序类加载器，然后通过它去加载。这就是所谓的线程上下文加载器
+
+
+
 以JDBC的SPI机制为例,只需要通过下面一句就可以创建数据库的连接：
 
 ```java
@@ -736,7 +805,7 @@ Connection con = DriverManager.getConnection(url , username , password ) ;
 //再通过class.forName("com.mysql.jdbc.Driver")来加载。
 ```
 
-JDBC的Driver接口定义在JDK中，其实现由各个数据库的服务商来提供，比如MySQL驱动包。DriverManager 类中要加载各个实现了Driver接口的类，然后进行管理，但是DriverManager位于 $JAVA_HOME中jre/lib/rt.jar 包，由BootStrap类加载器加载，而其Driver接口的实现类是位于服务商提供的 Jar 包，根据类加载机制，当被加载的类引用了另外一个类的时候，虚拟机就会使用加载第一个类的类加载器加载被引用的类。也就是说BootStrap类加载器还要去加载jar包中的Driver接口的实现类。我们知道，BootStrap类加载器默认只负责加载 $JAVA_HOME中jre/lib/rt.jar 里所有的class，是加载不到服务商提供的 class的。这就是双亲委派模型的局限性了，父级加载器无法加载子级类加载器路径中的类。
+JDBC的Driver接口定义在JDK中，其实现由各个数据库的服务商来提供，比如MySQL驱动包。DriverManager 类中要加载各个实现了Driver接口的类，然后进行管理，但是DriverManager位于 $JAVA_HOME中jre/lib/rt.jar 包，由BootStrap类加载器加载，而其Driver接口的实现类是位于服务商提供的 Jar 包，**根据类加载机制，当被加载的类引用了另外一个类的时候，虚拟机就会使用加载第一个类的类加载器加载被引用的类**。也就是说BootStrap类加载器还要去加载jar包中的Driver接口的实现类。我们知道，BootStrap类加载器默认只负责加载 $JAVA_HOME中jre/lib/rt.jar 里所有的class，是加载不到服务商提供的 class的。这就是双亲委派模型的局限性了，父级加载器无法加载子级类加载器路径中的类。
 
 按照目前情况来分析，这个mysql的drvier只有应用类加载器能加载，那么我们只要在启动类加载器中有方法获取应用程序类加载器，然后通过它去加载就可以了。这就是所谓的线程上下文加载器（Thread Context ClassLoader）。
 

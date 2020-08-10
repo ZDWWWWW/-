@@ -147,7 +147,6 @@ if(ans > (Integer.MAX_VALUE - digit) / 10)
 
 ```java
 int c=a^b
-    
 ```
 
 ## 字符串
@@ -714,7 +713,7 @@ return new int []{i,j}; //返回时new一个指定数组
 int[] arrays = {1, 2, 3, 4, 5};
 int[] arrays = new int[]{1, 2, 3, 4, 5};//数组初始化
 int[] nums = new int[n];//n个元素的数组
-
+int[][] nums = {{1,2,3},{2,3,4},{1,3,4}};//二维数组
 
 throw new RuntimeException("?????");
 
@@ -759,9 +758,128 @@ catch(RuntimeException e){
 
 //短路求值原理
 作为"&&"和"||"操作符的操作数表达式，这些表达式在进行求值时，只要最终的结果已经可以确定是真或假，求值过程便告终止，这称之为短路求值（short-circuit evaluation）
+    
+链表题目中，别一直想着递归，否则肯定得整出个helper。用双指针，用while循环链表，才能减少helper的出现
   ```
 
 ​	
+
+
+
+# 排序算法
+
+算法稳定性：能保证两个相等的数，经过排序之后，其在序列的前后位置顺序不变。（A1=A2，排序前A1在A2前面，排序后A1还在A2前面）
+
+==不稳定口诀：快选堆希==
+
+![image-20200810083226972](Leetcode.assets/image-20200810083226972.png)
+
+https://blog.csdn.net/weixin_41190227/article/details/86600821
+
+## 冒泡排序
+
+```java
+for(int i=0;i<nums.length;i++){
+    for(int j=0;j<nums.length-1-i;j++){
+        if(nums[j+1]<nums[j]){
+            exchange(nums,j+1,j);
+        }
+    }
+}
+```
+
+## 选择排序
+
+```java
+for(int i=0;i<nums.length;i++){
+    int minIndex=i;
+    for(int j=i+1;j<nums.length;j++){
+        if(nums[j]<nums[minIndex]) minIndex=j;
+    }
+    exchange(nums,i,minIndex);
+}
+```
+
+## 插入排序
+
+```java
+for(int i=1;i<nums.length;i++){
+    for(int j=i;j>0;i--){
+        if(nums[j]<nums[j-1]) exchange(nums,j,j-1);
+        else break;
+    }
+}
+```
+
+## 希尔排序
+
+```java
+int n=1;
+while(n<nums.length/3) n=3*n+1;
+while(n>=1){
+    for(int i=1;1<nums.length;i++){
+        for(int j=i;j>0;j-=n){
+            if(nums[j]<nums[j-n]) exchange(nums,j,j-n);
+          	else  break;
+        }
+    }
+    n=n/3;
+}
+```
+
+## 归并排序
+
+```java
+public static void sort(int[] nums, int left,int right){
+    if(left<high){
+        int mid = left+(right-left)/2;
+        sort(nums,left,mid);
+        sort(nums,mid+1,right);
+    	merger(a,left,mid,right);
+    }
+}
+
+public static void merge(int[] nums, int left, int mid, int right) {
+    int i=low;
+    int j=mid+1;
+    
+    for(int k=low;k<=high;k++){
+        temp[k]=nums[k];
+    }
+    for(int k=low;k<=high;k++){
+        if(i>mid) nums[k]=temp[j++];
+        else if(j>hi) nums[k]=temp[i++];
+        else if(temp[i]<temp[j]) nums[k]=temp[i++];
+        else nums[k]=temp[j++];
+    }
+}
+```
+
+## 快速排序
+
+```java
+public static void sort(int[] nums, int left,int right){
+    if(left<high){
+        int j = partition(nums,left,right);
+        sort(nums,left,j-1);
+        sort(nums,j+1,right);
+    }
+}
+
+public static int partition(int nums, int left, int right){
+    int start = left;
+    int key= nums[left];
+    while(left<high){
+        while(left < right && nums[left] <= key) left++;
+        while(left < right && nums[right] >= key) right--;
+        if(left<right) exchange(nums,left,right);
+    }
+    exchange(nums,start,right); //这里传right？
+    return right;
+}
+```
+
+## 堆排序
 
 
 
