@@ -551,7 +551,7 @@ put和 get **两次Hash**到达指定的HashEntry，第一次hash到达Segment,�
 
 即为什么不让Node继承ReentrantLock，也可以把锁细化，使用node.lock()就可以把node单独锁住，why not？
 
-原因是锁粒度这么小的情况下，出现并发争抢的可能性较低，且出现争抢时只要线程可以在30到50次自旋里拿到锁,那么Synchronized就不会升级为重量级锁,而等待的线程也就不用被挂起,我们也就少了挂起和唤醒这个上下文切换的过程开销.（涉及Synchronized锁优化/升级）
+原因是锁粒度这么小的情况下，出现并发争抢的可能性较低，且出现争抢时只要线程可以在30到50次自旋里拿到锁,那么Synchronized就不会升级为重量级锁,而等待的线程也就不用被挂起,我们也就少了挂起和唤醒这个上下文切换的过程开销.（**涉及Synchronized锁优化/升级**）
 
 
 
@@ -957,7 +957,7 @@ synchronized用的锁存在Java对象头里，Java对象头里的Mark Word默认
 
 **① synchronized 同步语句块的情况**
 
-synchronized 同步语句块的实现使用的是 monitorenter 和 monitorexit 指令，其中 monitorenter 指令指向同步代码块的开始位置，monitorexit 指令则指明同步代码块的结束位置。 当执行 monitorenter 指令时，线程试图获取锁也就是获取对象头中monitor的持有权。当计数器为0则可以成功获取，获取后将锁计数器设为1也就是加1。相应的在执行 monitorexit 指令后，将锁计数器设为0，表明锁被释放。如果获取对象锁失败，那当前线程就要阻塞等待，直到锁被另外一个线程释放为止。
+synchronized 同步语句块的实现使用的是 monitorenter 和 monitorexit 指令， 当执行 monitorenter 指令时，线程试图获取锁也就是获取对象头中monitor的持有权。当计数器为0则可以成功获取，获取后将锁计数器设为1也就是加1。相应的在执行 monitorexit 指令后，将锁计数器设为0，表明锁被释放。如果获取对象锁失败，那当前线程就要阻塞等待，直到锁被另外一个线程释放为止。
 
 **② synchronized 修饰方法的的情况**
 
@@ -978,31 +978,75 @@ synchronized 修饰的方法并没有 monitorenter 指令和 monitorexit 指令�
 
 ThreadLocal 适用于多线程下变量不需要共享的情况，保证存储进去的数据，只能被当前线程读取到，并且线程之间不会相互影响。ThreadLocal为变量在每个线程中都创建了一个副本，那么每个线程可以访问自己内部的副本变量。 
 
-**所谓ThreadLocal，简单一点想，就是一个全局的Map，Map的key是线程对象，value是你要保存的对象**
-
 ​	ThreadLocal有哪些典型的应用场景： 
 
 ​	1.数据库事务。事务是和线程绑定起来的，Spring中通过AOP的方式，在事务开始时会给当前线程绑定一个Jdbc Connection,在整个事务过程都是使用该线程绑定的connection来执行数据库操作，实现了事务的隔离性。
 
 ​	2.web项目中，用户的登录信息通常保存在session中。做一个拦截器，把session放在ThreadLocal中，在任何用到用户信息的时候，只需要从TreadLocal中读取就可以了。
 
+### 使用
+
+![image-20200816162644898](Java容器及并发.assets/image-20200816162644898.png)
+
+
+
+ThreadLocal实例对象 作为全局的静态属性
+
+线程可以引用到其实例对象并调用其方法
+
 ### 原理	
+
+
 
 ![img](Java容器及并发.assets/bd315c6034a85edf2121027dcd5cad25dc5475ca.jpeg)
 
-每个线程内部都有一个名为threadLocals 类型为ThreadLocalMap （定制化的HashMap）的成员变量，该成员变量的key为ThreadLocal 对象的this引用，value为set中设置的值。ThreadLocal 可以看做一个工具类，通过set方法把value值传递给线程的threadLocals 并保存。
+- `Thread` 类有维护了一个属性变量 `threadLocals` （ThreadLocal.ThreadLocalMap threadLocals = null），也就是说每个线程有都一个自己的 `ThreadLocalMap` ，所以每个线程往这个 `ThreadLocal` 中读写隔离的，并且是互相不会影响的 。
+- `ThreadLocalMap` 类是 `ThreadLocal` 类的静态内部类
+- `ThreadLocalMap` 维护了一个 `Entry` 数组，`Entry` 的 key 是 `ThreadLocal` 对象，value 是存入的对象，所以一个 `ThreadLocal` 只能对应一个Object对象
+- `Entry` 的 key 引用 `ThreadLocal` 是弱引用
+
+
+
+ThreadLocal类set()方法中，获得当前线程的 ThreadLocalMap ，设置 map 的 key 为 this 即 ThreadLocal 的实例，所以每个线程的 ThreadLocalMap 都有相同的key 只不过保存的 value 不同
+
+```java
+    public void set(T value) {
+        Thread t = Thread.currentThread();
+        ThreadLocal.ThreadLocalMap map = getMap(t);
+        if (map != null)
+            map.set(this, value);
+        else
+            createMap(t, value);
+    }
+    
+    ThreadLocal.ThreadLocalMap getMap(Thread t) {
+        return t.threadLocals;
+    }
+
+    void createMap(Thread t, T firstValue) {
+        t.threadLocals = new ThreadLocal.ThreadLocalMap(this, firstValue);
+    }
+```
 
 ### ThreadLocal 内存泄露问题
 
-`ThreadLocalMap` 中使用的 key 为 `ThreadLocal` 的弱引用,而 value 是强引用。所以，如果 `ThreadLocal` 没有被外部强引用的情况下，在垃圾回收的时候，key 会被清理掉，而 value 不会被清理掉。这样一来，`ThreadLocalMap` 中就会出现key为null的Entry。假如我们不做任何措施的话，value 永远无法被GC 回收，线程迟迟不结束的话就可能会产生内存泄露。ThreadLocalMap实现中已经考虑了这种情况，在调用 `set()`、`get()`、`remove()` 方法的时候，会清理掉 key 为 null 的记录。==使用完 `ThreadLocal`方法后 最好手动调用`remove()`方法==
+`ThreadLocalMap` 中 `Entry` 使用的 key 为 `ThreadLocal`对象的弱引用,而 value 是强引用。
 
-## Atomic 与 CAS
+使用弱引用是为了防止Entry对象和ThreadLocal对象存在强引用关联，而导致ThreadLocal对象无法被GC回收，从而引发内存泄漏。然鹅阻止了一种内存泄漏，引起了另一种内存泄漏。
+
+如果 `ThreadLocal` 没有被外部强引用的情况下，在垃圾回收的时候，key 会被清理掉，而 value 不会被清理掉。这样一来，`ThreadLocalMap` 中就会出现key为null的Entry。假如我们不做任何措施的话，value 永远无法被GC 回收，线程迟迟不结束的话就可能会产生内存泄露。ThreadLocalMap实现中已经考虑了这种情况，在调用 `set()`、`get()`、`remove()` 方法的时候，会清理掉 key 为 null 的记录。==使用完 `ThreadLocal`后 最好手动调用`remove()`方法==
+
+## JUC-原子类与并发List
 
 ### CAS原理
 
 CAS即compare and swap(比较与交换)，它涉及到三个操作数：内存值、预期值、新值。当且仅当预期值和内存值相等时才将内存值修改为新值，否则就什么都不做。整个比较并替换的操作是一个原子操作。
 
+**ABA问题**
 
+线程1准备用CAS将变量的值由A替换为C，在此之前，线程2将变量的值由A替换为B，又由B替换为A，然后线程1执行CAS时发现变量的值仍然为A，所以CAS成功。但实际上这时的现场已经和最初不同了，尽管CAS成功，但可能存在潜藏的问题。
+
+解决：通过版本耗来保证CAS的正确性。每次在执行数据的修改操作时，都会带上一个版本号，一旦版本号和数据的版本号一致就可以执行修改操作并对版本号执行+1操作，否则就执行失败
 
 **CAS实现自旋锁**
 
@@ -1049,6 +1093,12 @@ public class test {
 }
 ```
 
+
+
+
+
+
+
 ### Atomic 原子类
 
 原子类都存放在`java.util.concurrent.atomic`下
@@ -1094,7 +1144,52 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 
 
 
-## 锁与同步器
+### CopyOnWriteArrayList
+
+**写时复制**，适合**读多写少**的情况
+
+读取的时候可以写入，保存数据的数组使用**volatile**修饰，保证读取时读取写入后的最新数据。
+
+```java
+private transient volatile Object[] array;
+```
+
+写入时需要**加锁**，避免多线程写的时候会 copy 出多个副本。
+
+add(E) 的时候。容器会自动copy一份出来然后再尾部add(E)。
+
+```java
+    public boolean add(E e) {
+    final ReentrantLock lock = this.lock;
+    lock.lock();
+    try {
+        Object[] elements = getArray();
+        int len = elements.length;
+        Object[] newElements = Arrays.copyOf(elements, len + 1);
+        newElements[len] = e;
+        setArray(newElements);
+        return true;
+    } finally {
+        lock.unlock();
+    }
+    }
+```
+
+**弱一致性迭代器**
+
+返回迭代器后，其他线程对list的增删改时对迭代器不可见
+
+**优点**
+
+适合读多写少的情况，性能相对于Vector（增删改查全用synchronized ）会好很多
+
+**缺点**
+
+数据一致性问题：在添加到拷贝数据而还没进行替换的时候，读到的仍然是旧数据。
+
+内存占用问题：如果对象比较大，频繁地进行替换会消耗内存，从而引发 Java 的 GC 问题。
+
+## JUC-锁与同步器
 
 ### AQS原理
 
@@ -1397,7 +1492,7 @@ https://www.cnblogs.com/QullLee/p/12247743.html
 
 可用于**流量控制/资源限制**
 
-## 线程池 
+## JUC-线程池 
 
 ### 优点
 
@@ -1489,5 +1584,74 @@ public class ThreadTest {
    * 丢弃队列最前面的任务，然后重新提交被拒绝的任务
    * 调用提交任务的线程直接执行此任务，
 
+**corePoolSize的合理设置**
+
+根据任务不同，设置策略也不同
+
+1.cpu密集型：
+ CPU密集的意思是该任务需要大量的运算，而没有阻塞，CPU一直全速运行。
+ CPU密集任务只有在真正的多核CPU才可能得到加速（通过多线程）。
+ /而在单核CPU上，无论你开几个模拟的多线程该任务都不可能得到加速，因为CPU总的运算能力就那些。（不过现在应该没有单核的CPU了吧）/
+ CPU密集型的任务配置尽可能少的线程数量：
+ 一般公式：CPU核数+1个线程的线程池。
+
+2.IO密集型：（分两种）：
+ 1.由于IO密集型任务的线程并不是一直在执行任务，则应配置尽可能多的线程，如CPU核数*2
+ 2.IO密集型，即任务需要大量的IO，即大量的阻塞。在单线程上运行IO密集型的任务会导致浪费大量的CPU运算能力浪费在等待。所以在IO密集型任务中使用多线程可以大大的加速程序运行。故需要·多配置线程数：
+ 参考公式：CPU核数/（1-阻塞系数 ） 阻塞系数在（0.8-0.9）之间
+ 比如8核CPU：8/（1-0.9） = 80个线程数
 
 
+
+### WorkQueue(阻塞队列)
+
+#### ArrayBlockingQueue
+
+https://www.cnblogs.com/teach/p/10665199.html
+
+```java
+//底层采用数组
+final Object[] items;
+//全局锁对象
+final ReentrantLock lock;
+//通过有参构造函数确定容量
+
+//put操作采用了加锁的方式保证并发安全。while() 判断 若队列满则阻塞，队列不满则入队
+public void put(E e) throws InterruptedException {
+    checkNotNull(e); // 非空判断
+    final ReentrantLock lock = this.lock;
+    lock.lockInterruptibly(); // 获取锁
+    try {
+        while (count == items.length) {
+            // 一直阻塞，直到队列非满时，被唤醒
+            notFull.await();
+        }
+        enqueue(e); // 进队
+    } finally {
+        lock.unlock();
+    }
+}
+```
+
+#### LinkedBlockingQueue
+
+```java
+//底层采用FIFO的单链表
+//与ArrayBlockingQueue不同的是，LinkedBlockingQueue内部分别使用了takeLock 和 putLock 对并发进行控制，也就是说，添加和删除操作并不是互斥操作，可以同时进行，这样也就可以大大提高吞吐量。
+//如果不指定队列的容量大小，则使用默认的Integer.MAX_VALUE 即无界阻塞队列 
+```
+
+
+
+#### SynchronousQueue
+
+```java
+//是一个内部只能包含一个元素的队列。插入元素到队列的线程被阻塞，直到另一个线程从队列中获取了队列中存储的元素。同样，如果线程尝试获取元素并且当前不存在任何元素，则该线程将被阻塞，直到线程将元素插入队列。
+//将这个类称为队列有点夸大其词。这更像是一个点。
+
+//使用SynchronousQueue的目的就是保证“对于提交的任务，如果有空闲线程，则使用空闲线程来处理；否则新建一个线程来处理任务(拒绝策略是新建线程)。
+```
+
+
+
+#### PriorityBlockingQueue

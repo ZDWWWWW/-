@@ -86,6 +86,48 @@ public class Solution {
 
 **判断语句中注意前后顺序**，先判断前面的条件，虽然有!stack.empty()保证不进入下一个while，但会先判断stack.peek()，此时栈已经空了，所以会报错。
 
+
+
+## [剑指 Offer 30. 包含min函数的栈](https://leetcode-cn.com/problems/bao-han-minhan-shu-de-zhan-lcof/)
+
+```java
+class MinStack {
+    Stack<Integer> stack;
+    Stack<Integer> minstack;
+
+    /** initialize your data structure here. */
+    public MinStack() {
+        stack = new Stack<Integer>();
+        minstack = new Stack<Integer>();
+    }
+    
+    public void push(int x) {
+        stack.push(x);
+        if(minstack.empty()) minstack.push(x);
+        else{
+            if(minstack.peek()>=x) minstack.push(x);
+        }
+    }
+    
+    public void pop() {
+        if(stack.peek().equals(minstack.peek())) minstack.pop();//这尼玛stack里面存的是integer类 要用重写后的equals来判断
+        stack.pop();
+    }
+    public int top() {
+        return stack.peek();
+    }
+    
+    public int min() {
+        return minstack.peek();
+    }
+}
+
+```
+
+这尼玛是个神坑,由于Stack<Integer> 存放在其中的元素是包装类，所以取出其值并对其进行大小判断的时候，不可以用==，因其不是基本类型，所以判断的是内存地址。这里要使用equals()
+
+
+
 # 题型总结
 
 ## 数字
@@ -835,7 +877,7 @@ public static void sort(int[] nums, int left,int right){
         int mid = left+(right-left)/2;
         sort(nums,left,mid);
         sort(nums,mid+1,right);
-    	merger(a,left,mid,right);
+    	merger(nums,left,mid,right);
     }
 }
 
@@ -843,10 +885,10 @@ public static void merge(int[] nums, int left, int mid, int right) {
     int i=low;
     int j=mid+1;
     
-    for(int k=low;k<=high;k++){
+    for(int k=left;k<=high;k++){
         temp[k]=nums[k];
     }
-    for(int k=low;k<=high;k++){
+    for(int k=left;k<=high;k++){
         if(i>mid) nums[k]=temp[j++];
         else if(j>hi) nums[k]=temp[i++];
         else if(temp[i]<temp[j]) nums[k]=temp[i++];
@@ -869,7 +911,7 @@ public static void sort(int[] nums, int left,int right){
 public static int partition(int nums, int left, int right){
     int start = left;
     int key= nums[left];
-    while(left<high){
+    while(left<right){
         while(left < right && nums[left] <= key) left++;
         while(left < right && nums[right] >= key) right--;
         if(left<right) exchange(nums,left,right);
@@ -881,5 +923,37 @@ public static int partition(int nums, int left, int right){
 
 ## 堆排序
 
+```java
+    public static int[] sort(int[] nums){
+        for (int i = nums.length/2-1; i >=0 ; i--) {
+            sink(nums,i,nums.length);
+        }
+        for (int j = nums.length-1; j >0 ; j--) {
+            exchange(nums,0,j);
+            //已排序好的大顶堆，更改了顶部元素，只要对顶部重新排序一次
+            sink(nums,0,j);
+        }
+        return nums;
+    }
 
+
+
+    //下沉的时候有个交换，自然有东西上来，永远都是从倒数第二层开始sink，保证最大的可以交换上来
+    //2*parent+1为左节点 2*parent+2为右节点
+    public static void sink(int[] nums, int parent, int length){
+        while(2*parent+1<length){
+            int maxNode = 2*parent+1;
+            //找到左右节点中最大的节点
+            if(maxNode+1<length && nums[maxNode]<nums[maxNode+1]){
+                maxNode++;
+            }
+            if(nums[parent]>=nums[maxNode]) break;
+            
+            exchange(nums,parent,maxNode);
+
+            parent = maxNode;
+
+        }
+    }
+```
 

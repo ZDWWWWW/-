@@ -1049,7 +1049,7 @@ public void killRedisMq(Integer id) throws JsonProcessingException{
 
 通过RabbitMQ的消息确认机制，若mysql库存扣除了，才确认消息被消费。若确认失败则重新入队，等待下一次消费。保证了redis扣除一个库存，产生一个消息，mysql扣除库存，MQ消费一个消息。
 
-**确保mysql和消息确认的数据一致性（分布式事务）**
+**确保mysql和消息确认的数据一致性（分布式事务） 消息的幂等性**
 
 若mysql库存扣除了，想要进行消息确认时，因为网络问题导致消息未被确认，消息重新入队，导致消息重复消费，一个消息修改两次mysql库存。
 
