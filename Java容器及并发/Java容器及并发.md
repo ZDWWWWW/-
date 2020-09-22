@@ -1,5 +1,3 @@
-# 容器
-
 ![img](Java容器及并发.assets/20180918155055147.png)
 
 **迭代器**
@@ -769,6 +767,8 @@ public interface Runnable {
 
    volatile的happen-before原则：对一个volatile变量的写操作happen-before对此变量的任意操作(当然也包括写操作了)。
 
+具体见缓存一致性和指令重排序章节
+
 ### volatile和synchronized的区别
 
 - volatile关键字是线程同步的轻量级实现，所以volatile性能肯定比synchronized关键字要好。但是volatile关键字只能用于变量而synchronized关键字可以修饰方法、类以及代码块。
@@ -817,6 +817,158 @@ https://www.jianshu.com/p/1508eedba54d/
 volatile的happen-before原则：对一个volatile变量的写操作happen-before对此变量读写操作。
 
 happen-before的传递性原则：如果A操作 happen-before B操作，B操作happen-before C操作，那么A操作happen-before C操作。
+
+
+
+## 缓存一致性
+
+### CPU多级缓存
+
+　高速缓存L1、L2、L3，级别越小的缓存，越接近CPU， 意味着速度越快且容量越少。
+
+![image-20200914101707963](Java容器及并发.assets/image-20200914101707963.png)
+
+L3 Cache和L1，L2 Cache有着本质的区别。，L1和L2 Cache都是每个CPU core独立拥有一个，而L3 Cache是几个Cores共享的，可以认为是一个更小但是更快的内存。
+
+### 伪共享
+
+缓存内部是按行存储的，每一行成为一个缓存行（Cache Line），缓存行的大小通常是64字节。
+
+当CPU访问某个变量时，首先会看Cache中是否有该变量，如果有则直接从中获取，否则则去主内存中获取该变量。然后把该变量所在主内存部分一个Cache Line大小的内存复制到Cache中。缓存行的大小通常是64字节，这意味着即使只操作1字节的数据，CPU最少也会读取这个数据所在的连续64字节数据。
+
+**CPU缓存行能带来免费加载数据的好处，所以处理数组性能非常高；**
+
+如果使用的数据结构中的项在内存中不是彼此相邻的，比如链表，那么将得不到免费缓存加载带来的好处。
+
+**多线程修改互相独立的变量时，如果这些变量处在同一个缓存行，只有一个线程能获取到CPU缓存行的Share状态并修改。由于产生修改，其他CPU中相应缓存行转为Invalid 状态，变量需要重新加载。**
+
+```java
+volatile int a = 0;
+int b = 0;
+```
+
+线程A、B分别使用到变量a、b，且a、b内存上相邻，则两变量位于同一缓存行被加载到CPU1 和 CPU2 缓存中。
+
+此时线程A修改 volatile变量 a， 此时当前处理器缓存行的数据会写回到系统内存，这个写回内存的操作会引起在其他CPU里缓存了变量 a内存地址的缓存行无效。导致线程B对应的缓存行失效。
+
+**避免伪共享**需要进行缓存行填充，周边填充一些空的变量，保证一个缓存行中只有一个volatile变量。
+
+```java
+public final static class VolatileLong {
+    long p0, p1, p2, p3, p4, p5, p6;
+    public volatile long value = 0;
+    long q0, q1, q2, q3, q4, q5, q6;
+}
+```
+
+在Java 8中，提供了@sun.misc.Contended注解来避免伪共享，原理是在使用此注解的对象或字段的前后各增加128字节大小的padding，使用2倍于大多数硬件缓存行的大小来避免相邻扇区预取导致的伪共享冲突。
+
+### 缓存一致性协议（MESI）
+
+https://albk.tech/%E8%81%8A%E8%81%8A%E7%BC%93%E5%AD%98%E4%B8%80%E8%87%B4%E6%80%A7%E5%8D%8F%E8%AE%AE.html
+
+为了保证多核cpu各个缓存的数据的一致性。
+
+CPU中每个**缓存行**使用四种状态进行标记。
+
+M：Modified 修改：指的是该缓存行只被缓存在该CPU缓存中，并且是被修改过的，因此他与主存的数据是不一致的，该缓存行中的数据需要在未来的某个时间点（允许其他CPU读取主存相应的内容之前）写回主存，然后状态变成E（独享）。
+
+E ：Exclusive 独享：缓存行只被缓存在该CPU的缓存中，是未被修改过的，与主存的数据是一致的，可以在任何时刻当有其他CPU读取该内存时，变成S（共享）状态，当CPU修改缓存行的内容时，变成M（修改）的状态。
+
+S ：Share 共享：意味着该缓存行可能被多个CPU进行缓存，并且该缓存中的数据与主存数据是一致的，当有一个CPU修改该缓存行时，其他CPU是可以被作废的，变成I（无效的）。
+
+I ：Invalid 无效的：代表这个缓存是无效的，可能是有其他CPU修改了该缓存行。
+
+
+
+~~**对于M和E状态而言总是精确的，他们在和该缓存行的真正状态是一致的，而S状态可能是非一致的。**如果一个缓存将处于S状态的缓存行作废了，而另一个缓存实际上可能已经独享了该缓存行，但是该缓存却不会将该缓存行升迁为E状态，这是因为其它缓存不会广播他们作废掉该缓存行的通知~~
+
+## 指令重排序
+
+### 单线程的重排序（as-if-serial ）
+
+as-if-serial 语义的意思指：不管怎么重排序（编译器和处理器为了提高并行度），（单线程）程序的执行结果不能被改变。
+
+为了遵守 as-if-serial 语义，编译器和处理器不会对存在数据依赖关系的操作做重排序，因为这种重排序会改变执行结果。但是，如果操作之间不存在数据依赖关系，这些操作可能被编译器和处理器重排序。
+
+a和b不依赖，c和a、b都依赖。
+
+```cpp
+double a  = 1;   
+double b   = 2;    
+double c = a * b; 
+```
+
+### 多线程的重排序
+
+多线程的重排序会产生问题。
+
+https://www.jianshu.com/p/c6f190018db1
+
+使用Synchronized同步程序，保证程序的顺序一致性，可以避免重排序带来的问题。--《java并发编程的艺术 p34》
+
+
+
+### 硬件的内存屏障
+
+
+
+[内存屏障](https://www.cnblogs.com/yungyu16/p/13200620.html)
+
+[写缓冲器、无效化队列](https://www.dazhuanlan.com/2019/11/20/5dd437409b744/?__cf_chl_jschl_tk__=19c39a66962e36b04aa9bf7272396c53b47a887e-1600091754-0-AdN1I-TJj-MmD9NWzk8rPBqVb2_5q2sL2MkfdSgcdJA19T0FE8w1NVlnP-l09vdaDeroPbdKwKWPKOT14XKOV0upxths3b2vRJ6R9LV12YdnugZu52UYk2jG493BvqTwvsFLZxn9BoaknPHZ3R_5pAl-Ojij5NN5qwqLHBgujmPIWaGOAfwnspcDbXS_U4I4ttqacPOaj3Lh0M2Yc4t9N2xNEIKTFd_QMqgVOR8zFFqQZ-e5zF_tOAmuMq0oAbcSWigiAGjR7BjYBIYEMS_VBXEnwds0-yQoggbT-zn1p6xd2v-jLAtfCXXxmQDqMEt1Dg)
+
+[内存屏障](https://zhuanlan.zhihu.com/p/125737864)
+
+[内存屏障](https://zhuanlan.zhihu.com/p/35386457)
+
+在多核CPU的情况下，因为多核CPU上的指令同时执行，如果涉及到共享变量的修改，这种优化会影响多线程运行的正确性,而**内存屏障**是硬件层面提供的一系列特殊指令，当CPU处理到这些指定时，会做一些特殊的处理，可以使处理器内的内存状态对其它处理器可见，在不同的平台上支持的内存屏障也会有差异。
+
+![img](https://picb.zhimg.com/v2-c6e00c86d1851e075bbcb32878e85e5c_b.jpg)
+
+MESI协议解决了缓存一致性问题，一个Cache Line在Share状态发生了更改，通过总线通信去通知其他CPU作废掉对应Cache Line。在进行写数据的时候是处于一种阻塞的状态，只有等待写操作进行完毕，其他处理器存于高速缓存的数据被设置为 I (无效)的时侯，待其返回设置完毕的命令的时候，我们的执行处理器才能够继续执行。这个问题导致了延迟，为了避免减少写操作带来的性能问题，硬件层面引入了**写缓冲器**（store/write buffer）和**无效化队列**（invalidate queue)。本质上是一种**异步**操作。
+
+![image-20200914215209959](Java容器及并发.assets/image-20200914215209959.png)
+
+引入写缓冲器，使得处理器在执行写操作的时候，写入写缓冲器中，则认为写操作已经完成。而实际上，当处理器收到其他所有处理器回应的Read Response、Invalidate Acknowledge消息后，处理器才会将写缓冲器中对应的写操作写入相应的缓存行，这个时候，写操作才算真正完成。
+
+引入无效化队列，使得处理器在收到`Invalidate`消息之后，并不立马删除地址中对应的副本数据（其实是更新缓存行的状态为无效）,而是将消息存入无效化队列之后就直接响应`Invalidate Response`消息了，从而减少了写操作执行处理器的等待时间。
+
+写缓冲器和无效化队列相当于又破坏了缓存一致性，从而**导致了表面上的指令重排序**。写缓冲器使得当CPU1对变量的写操作没有执行完时，CPU2对变量的读操作读到的是旧的值。无效化队列虽然收到到变量已更改的通知，但是却没有及时更改，导致使用的依然是未更新的变量。
+
+CPU通常提供了内存屏障指令，来解决这样的问题。读屏障(Load Barrier)，清空本地的invalidate queue，保证之前的所有load都已经生效；写屏障(Store Barrier)，清空本地的store buffer，使得之前的所有store操作都生效。
+
+
+
+### JMM的内存屏障
+
+|      屏障类型      |            示例            |                             含义                             |
+| :----------------: | :------------------------: | :----------------------------------------------------------: |
+|  **LoadLoad屏障**  |   Load1; LoadLoad; Load2   | 在Load2加载代码读取数据前，保证Load1加载代码要从主内存里面读取的数据读取完毕。 |
+| **StoreStore屏障** | Store1; StoreStore; Store2 | 在Store2存储代码进行写入操作执行前，保证Store1的写入操作已经把数据写入到主内存里面，确认Store1的写入操作对其它处理器可见。 |
+| **LoadStore屏障**  |  Load1; LoadStore; Store2  | 在Store2存储代码进行写入操作执行前，保证Load1加载代码要从主内存里面读取的数据读取完毕。 |
+| **StoreLoad屏障**  |  Store1; StoreLoad; Load2  | 在Load2加载代码在从主内存里面读取的数据之前，保证Store1的写入操作已经把数据写入到主内存里面，确认Store1的写入操作对其它处理器可见。 |
+
+
+
+**volatile内存语义**
+
+- 在每个 volatile 写操作的前面插入一个 StoreStore 屏障
+
+  ​	让其他线程修改A变量后，把修改的值对当前线程可见
+
+- 在每个 volatile 写操作的后面插入一个 StoreLoad 屏障
+
+  ​	让其他线程获取A变量的时候，能够获取到已经被当前线程修改的值
+
+- 在每个 volatile 读操作的后面插入一个 LoadLoad 屏障
+
+  ​	让当前线程获取A变量的时候，保证其他线程也都能获取到相同的值
+
+- 在每个 volatile 读操作的后面插入一个 LoadStore 屏障
+
+  ​	让当前线程在其他线程修改A变量的值之前，获取到主内存里面A变量的的值
+
+
 
 ## Synchronized
 
@@ -1567,7 +1719,7 @@ public class ThreadTest {
 **可能产生的问题：**
 
 1. newFixedThreadPool和newSingleThreadExecutor:
-   主要问题是堆积的请求处理队列可能会耗费非常大的内存，甚至OOM。
+   主要问题是堆积的请求处理队列（LinkedBlockingQueue）可能会耗费非常大的内存，甚至OOM。
 2. newCachedThreadPool和newScheduledThreadPool:
    主要问题是线程数最大数是Integer.MAX_VALUE，可能会创建数量非常多的线程，甚至OOM。
 
@@ -1580,7 +1732,6 @@ public class ThreadTest {
 5. threadFactory：表示生成线程池中的工作线程的线程工厂，用于创建线程，一般为默认线程工厂即可
 6. rejectedHandler：拒绝策略，表示当队列满了并且工作线程大于等于线程池的最大线程数时采取的策略，如
    * 丢弃任务抛出异常、丢弃任务不抛异常
-   * 丢弃最前面的任务，尝试重新执行
    * 丢弃队列最前面的任务，然后重新提交被拒绝的任务
    * 调用提交任务的线程直接执行此任务，
 
@@ -1649,7 +1800,7 @@ public void put(E e) throws InterruptedException {
 //是一个内部只能包含一个元素的队列。插入元素到队列的线程被阻塞，直到另一个线程从队列中获取了队列中存储的元素。同样，如果线程尝试获取元素并且当前不存在任何元素，则该线程将被阻塞，直到线程将元素插入队列。
 //将这个类称为队列有点夸大其词。这更像是一个点。
 
-//使用SynchronousQueue的目的就是保证“对于提交的任务，如果有空闲线程，则使用空闲线程来处理；否则新建一个线程来处理任务(拒绝策略是新建线程)。
+//使用SynchronousQueue的目的就是保证“对于提交的任务，如果有空闲线程，则使用空闲线程来处理；否则新建一个线程来处理任务。
 ```
 
 

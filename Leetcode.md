@@ -455,6 +455,16 @@ int right_bound(int[] nums, int target) {
 }
 ```
 
+### 终极理解
+
+当我们初始化时 right=nums.length-1
+决定了我们的「搜索区间」是 [left, right]
+所以决定了 while (left <= right)
+
+即右边是可以取到的，以后缩小搜索区间时，mid+1/mid-1
+
+最后return 可以用带值法，根据用例代入，找到最后一步的条件，判断返回结果
+
 
 
 ## 动态规划
@@ -585,6 +595,7 @@ temp = temp>>1; //向右移一位
 Integer.MAX_VALUE
 Integer.MIN_VALUE
 int a = Integer.valueOf(str); //string转int    
+String s = String.valueOf(i);
     
 Character.isDigit()//判断字符是否为数字
 Character.isLetter()//判断指定字符是否为字母 其中中文单个字也会被认为是字母！！！
@@ -603,7 +614,6 @@ stack.search()//返回对象在栈中的位置,栈顶为1
 stack.size()
 
 int i = Integer.parseInt( s ); //string转int    
-
 ```
 
 
@@ -708,6 +718,7 @@ s.toLowerCase()//转小写
 s.trim()//用于删除字符串的头尾空白符
 s.substring(int beginIndex, int endIndex)//返回截取的新字符串，左闭右开
 char[] chars = s.toCharArray();//将字符串转换为字符数组
+int n = s.compareTo(s1)//比较相同位置字符差值（ASCII码顺序），可以用来比较大数的大小
 
 StringBuilder sb = new StringBuilder();
 sb.append(String str)/sb.append(StringBuilder sb)/sb.append(Char c)````//append一切
@@ -872,6 +883,7 @@ while(n>=1){
 ## 归并排序
 
 ```java
+//right可以取到
 public static void sort(int[] nums, int left,int right){
     if(left<high){
         int mid = left+(right-left)/2;
@@ -890,7 +902,7 @@ public static void merge(int[] nums, int left, int mid, int right) {
     }
     for(int k=left;k<=high;k++){
         if(i>mid) nums[k]=temp[j++];
-        else if(j>hi) nums[k]=temp[i++];
+        else if(j>right) nums[k]=temp[i++];
         else if(temp[i]<temp[j]) nums[k]=temp[i++];
         else nums[k]=temp[j++];
     }
@@ -911,12 +923,13 @@ public static void sort(int[] nums, int left,int right){
 public static int partition(int nums, int left, int right){
     int start = left;
     int key= nums[left];
-    while(left<right){
-        while(left < right && nums[left] <= key) left++;
-        while(left < right && nums[right] >= key) right--;
-        if(left<right) exchange(nums,left,right);
+    //right作为数组下标，是可以取到的，所以left可以等于right
+    while(left<=right){
+        while(left <= right && nums[left] <= key) left++;
+        while(left <= right && nums[right] >= key) right--;
+        if(left<=right) exchange(nums,left,right);
     }
-    exchange(nums,start,right); //这里传right？
+    exchange(nums,start,right); //这里传right
     return right;
 }
 ```

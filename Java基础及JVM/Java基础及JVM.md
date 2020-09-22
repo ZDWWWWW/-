@@ -369,6 +369,8 @@ builder = new StringBuilder("ipad"); 之后
 
 **clone()**：
 
+https://blog.csdn.net/qq_33314107/article/details/80271963
+
 被复制的类实现Clonenable接口，覆盖clone()方法，方法中调用super.clone()方法得到需要的复制对象。
 
 该方法也分为深克隆和浅克隆，区别在于克隆对象本身持有其他对象的引用时，是否对持有对象也进行克隆。
@@ -376,6 +378,34 @@ builder = new StringBuilder("ipad"); 之后
 在浅克隆中，对象的成员变量是基本数据类型的则复制值，是引用类型的则复制引用对象的地址。
 
 在深克隆中，对象的成员变量无论何种类型，都是复制值的深拷贝。
+
+```java
+@Data
+public class Person implements Cloneable {
+    private String name;
+    private Integer age;
+    private Address address;
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
+}
+ 
+@Test
+public void testShallowCopy() throws Exception{
+  Person p1=new Person();
+  p1.setAge(31);
+  p1.setName("Peter");
+ 
+  Person p2=(Person) p1.clone();
+  System.out.println(p1==p2);//false
+  p2.setName("Jacky");
+  System.out.println("p1="+p1);//p1=Person [name=Peter, age=31]
+  System.out.println("p2="+p2);//p2=Person [name=Jacky, age=31]
+}
+```
+
+
 
 ## 动态绑定与静态绑定
 
@@ -719,6 +749,119 @@ public class SerializeDemo
 
   反序列化后值为null
 
+## IO
+
+![img](Java基础及JVM.assets/5763525-b9823af16e7843da.webp)
+
+常用的就是前缀带File的和Buffered的
+
+FileInputStream FileOutputStream FileReader FileWriter
+
+BufferedInputStream  BufferedOutputStream  BufferedReader  BufferedWriter
+
+
+
+### 装饰器模式
+
+https://segmentfault.com/a/1190000004255439
+
+https://www.cnblogs.com/noteless/p/9642568.html
+
+允许向一个现有的对象添加新的功能，同时又不改变其结构。
+
+以InputStream及其子类为例。
+
+InputStream类是抽象鸡肋，其抽象方法由具体子类去实现。
+
+- ByteArrayInputStream
+- FileInputStream
+- ObjectInputStream
+- PipedInputStream
+- SequenceInputStream
+- StringBufferInputStream
+
+而其中有一个子类很不对劲，这个子类就是**FilterInputStream**，他并没有实现抽象方法
+
+翻开FilterInputStream的代码，我们可以看到，它内部又维护了一个InputStream的成员对象，并且它的所有方法，都是调用这个成员对象的同名方法。
+换句话说，FilterInputStream它什么事都不做。就是把调用委托给内部的InputStream成员对象。如下所示：
+
+```java
+public class FilterInputStream extends InputStream {
+    protected volatile InputStream in;
+    
+    protected FilterInputStream(InputStream in) {
+        this.in = in;
+    }
+    public int read() throws IOException {
+        return in.read();
+    }
+    ......
+}
+```
+
+FilterInputStream又有子类  **BufferedInputStream** ，这个类提供了提前读取数据的功能，也就是缓冲的功能，可以加快读取速度。BufferedInputStream就是一个装饰者，它能为一个原本没有缓冲功能的InputStream添加上缓冲的功能。
+
+```java
+BufferedInputStream bis = new BufferedInputStream(new FileInputStream(new File("/home/user/abc.txt")));
+```
+
+每次调用 bis.read() 首先获取到FileInputStream对象，执行其read()方法，然后将读取的内容填入缓冲池中。
+
+
+
+## try-catch-finally
+
+https://www.cnblogs.com/pcheng/p/10968841.html
+
+1. 仅try/catch 中有 return，会浅拷贝一个对象保存当前返回对象。先执行finally中操作，再返回。若finally改变返回对象，基本类型的返回对象不变，引用类型的返回对象改变。
+2. 当finally中有return，会覆盖try/catch的return。
+
+
+
+## Java对象
+
+==**对象头+实例数据+对齐填充**==
+
+ ![img](Java基础及JVM.assets/1090126-20181203193441990-1729189612.png)
+
+### **对象头**
+
+对象头在32位系统上占用32bit（8B），64位系统上占64bit（16B）
+
+HotSpot虚拟机的对象头包括markword和class。第一部分markword，用于存储对象自身的运行时数据，如哈希码（HashCode）、GC分代年龄、锁状态标志、线程持有的锁、偏向线程ID、偏向时间戳等。 另外一部分是class类型指针，即对象指向它的类元数据的指针，虚拟机通过这个指针来确定这个对象是哪个类的实例。
+
+![image-20200922105104494](Java基础及JVM.assets/image-20200922105104494.png)
+
+
+
+1. 在32位系统下，存放Class指针的空间大小是4字节，MarkWord是4字节，对象头为8字节。
+
+2. 在64位系统下，存放Class指针的空间大小是8字节，MarkWord是8字节，对象头为16字节。
+
+3. 在64位**默认开启指针压缩** -XX:+UseCompressedOops，存放Class指针的空间大小是4字节，MarkWord是8字节，对象头为12字节。
+
+4. **如果对象是数组，那么额外增加4个字节**
+
+### 实例数据
+
+基本类型则按基本类型算，**引用类型大小为4字节**。
+
+### 对齐填充
+
+对象的大小必须是8字节的整数倍，仅仅起着占位符的作用。
+
+
+
+```java
+//对象B：对象头12B + 内部对象s引用 4B + 内部对象i 基础类型int 4B + 对齐 4B = 24B
+//s没有被分配堆内存空间
+//总： 对象B 24B
+class B {
+  String s;
+  int i = 0;
+}
+```
+
 # JVM
 
 ## 内存区域
@@ -854,19 +997,17 @@ java中可作为GC Root的对象有：
 
 它的主要缺点有两个：一个是效率问题，标记和清除过程的效率都不高；另外一个是空间问题，标记清除之后会产生大量不连续的内存碎片，**空间碎片太多**可能会导致，当程序在以后的运行过程中需要分配较大对象时无法找到足够的连续内存而不得不提前触发另一次垃圾收集动作。
 
-![wpsA73E.tmp](https://images2015.cnblogs.com/blog/331425/201606/331425-20160624174234266-1575111287.png)
-
- 
+![331425-20160624174234266-1575111287-1589334221864](Java基础及JVM.assets/331425-20160624174234266-1575111287-1589334221864.png)
 
 **复制**（Copying）算法，它将可用内存按容量划分为两块，每次只使用其中的一块。当这一块的内存用完了，就将还存活着的对象复制到另外一块上面，然后再把已使用过的内存空间一次清理掉。
 
 实践中会将新生代内存分为一块较大的Eden空间和两块较小的Survivor空间 ，每次使用Eden和其中一块Survivor。当回收时，将Eden和Survivor中还存活着的对象一次地复制到另外一块Survivor空间上，最后清理掉Eden和刚才用过的Survivor空间。**HotSpot虚拟机默认Eden和Survivor的大小比例是 8:1:1**，也就是每次新生代中可用内存空间为整个新生代容量的90% ( 80%+10% )，只有10% 的内存会被“浪费”。
 
-​								 ![wps9D31.tmp](https://images2015.cnblogs.com/blog/331425/201606/331425-20160624174237703-328169343.png)
+​								 ![331425-20160624174237703-328169343](Java基础及JVM.assets/331425-20160624174237703-328169343.png)
 
 根据老年代的特点，有人提出了另外一种“**标记-整理**”（Mark-Compact）算法，标记过程仍然与“标记-清除”算法一样，但后续步骤不是直接对可回收对象进行清理，而是让所有存活的对象都向一端移动，然后直接清理掉端边界以外的内存
 
-![wps3952.tmp](https://images2015.cnblogs.com/blog/331425/201606/331425-20160624174239219-1187241876.png)
+![331425-20160624174239219-1187241876](Java基础及JVM.assets/331425-20160624174239219-1187241876.png)
 
 “**分代收集**”（Generational Collection）算法，把Java堆分为新生代和老年代，这样就可以根据各个年代的特点采用最适当的收集算法。在新生代中，每次垃圾收集时都发现有大批对象死去，只有少量存活，那就选用复制算法，只需要付出少量存活对象的复制成本就可以完成收集。而老年代中因为对象存活率高、没有额外空间对它进行分配担保，就必须使用“标记-清理”或“标记-整理”算法来进行回收。
 
@@ -1044,22 +1185,9 @@ jmap -dump:live,format=b,file=myjmapfile.txt 19570
 
 ## 类加载
 
-### 类加载过程
+### 类加载过程（类生命周期）
 
 ![image-20200513113655154](Java基础及JVM.assets/image-20200513113655154.png)
-
-虚拟机规范严格规定了**有且只有5种情况**必须立即对类进行“初始化”（加载、验证、准备等阶段在此之前开始）。
-
-1. 遇到new、getstatic、putstatic、invokestatic等4条字节码指令时。生成这4条指令的常见场景是：
-   - 使用new关键字实例化对象时。
-   - 读取或设置一个类的静态字段（被final修饰、已在编译期把结果放入常量池的静态字段除外）时。
-   - 调用一个类的静态方法时。
-2. 使用java.lang.reflect包的方法对类进行反射调用时。
-3. 准备初始化一个类时发现其父类还没进行初始化，则先对父类进行初始化。
-4. 虚拟机启动时会先初始化用户所指定的要执行的主类（即包含main方法的那个类）。
-5. 当使用JDK 1.7 的动态语言支持时，如果一个java.lang.invoke.MethodHandle 实例最后解析结果为REF_getStatic、REF_putStatic、REF_invokeStatic的方法句柄，并且这个方法句柄对应类没有初始化时，必须触发其初始化。
-
-
 
 #### 加载
 
@@ -1097,15 +1225,27 @@ jmap -dump:live,format=b,file=myjmapfile.txt 19570
 
 解析阶段主要是虚拟机将常量池中的符号引用转化为直接引用的过程。
 
+- **符号引用**。即一个字符串，但是这个字符串给出了一些能够唯一性识别一个方法，一个变量，一个类的相关信息。
+- **直接引用**。可以理解为一个内存地址，或者一个偏移量。比如**类方法，类变量**的直接引用是指向方法区的**指针**；而**实例方法，实例变量**的直接引用则是从实例的头指针开始算起到这个实例变量位置的**偏移量**
+
+举个例子来说，现在调用方法hello()，这个方法的地址是1234567，那么hello就是符号引用，1234567就是直接引用。
+
 #### 初始化
 
-到了初始化阶段，才开始执行Java程序代码（字节码）
-
-**为类变量赋予正确的初始值**
-
-
+在连接的准备阶段，类变量已赋过一次系统要求的初始值，而在初始化阶段，则是根据程序员自己写的逻辑去初始化类变量和其他资源。
 
 ![image-20200704160449829](Java基础及JVM.assets/image-20200704160449829.png)
+
+虚拟机规范严格规定了**有且只有5种情况**必须立即对类进行“初始化”（加载、验证、准备等阶段在此之前开始）。
+
+1. 遇到new、getstatic、putstatic、invokestatic等4条字节码指令时。生成这4条指令的常见场景是：
+   - 使用new关键字实例化对象时。
+   - 读取或设置一个类的静态字段（被final修饰、已在编译期把结果放入常量池的静态字段除外）时。
+   - 调用一个类的静态方法时。
+2. 使用java.lang.reflect包的方法对类进行反射调用时。
+3. 准备初始化一个类时发现其父类还没进行初始化，则先对父类进行初始化。
+4. 虚拟机启动时会先初始化用户所指定的要执行的主类（即包含main方法的那个类）。
+5. 当使用JDK 1.7 的动态语言支持时，如果一个java.lang.invoke.MethodHandle 实例最后解析结果为REF_getStatic、REF_putStatic、REF_invokeStatic的方法句柄，并且这个方法句柄对应类没有初始化时，必须触发其初始化。
 
 
 
